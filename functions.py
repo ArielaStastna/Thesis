@@ -4,6 +4,9 @@ import socket
 import random
 import randominfo
 from faker import Faker
+import json
+import logparser
+from logparser.logparser import*
 
 
 def print_original(log):
@@ -197,6 +200,21 @@ def anonymize_email(email):
         # Add anonymized email to dictionary
         anonymized_emails[email] = anonymized_email
         return anonymized_email
+
+def parse_log_mac(filename):
+    # Read the JSON log message from the file
+    with open(filename, 'r') as f:
+        log_message = f.read()
+
+    # Parse the log message using Metakeys
+    parser = LogParser()
+    parsed_log = parser.parse(log_message, format='json')
+
+    # Extract the fields from the parsed log
+    hostmac= parsed_log.get('host.mac')
+
+    # Return the extracted fields
+    return hostmac
 # Create an instance of RandomInfo
 # ri = Person()
 #
