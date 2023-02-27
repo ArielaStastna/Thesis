@@ -292,33 +292,7 @@ def directory_linux_db():
 #     except KeyError:
 #         print('No such value.')
 #  return metavalues
-# @app.route('/json_mac')
-# def json_mac():
-#  with open("files/example.json", "r") as file:
-#     fileData = file.read()
-#     jsonData = json.loads(fileData)
-#     metavalues=[]
-#     try:
-#      metavalues.append(jsonData["client.mac"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["destination.mac"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["host.mac"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["observer.mac"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["server.mac"])
-#     except KeyError:
-#      print('No such value.')
-#  return metavalues
+
 # @app.route('/json_directory')
 # def json_directory():
 #  with open("files/example.json", "r") as file:

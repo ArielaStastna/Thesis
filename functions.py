@@ -211,10 +211,14 @@ def parse_log_mac(filename):
     parsed_log = parser.parse(log_message, format='json')
 
     # Extract the fields from the parsed log
-    hostmac= parsed_log.get('host.mac')
+    host= parsed_log.get('host.mac')
+    client=parsed_log.get("client.mac")
+    destination=parsed_log.get("destination.mac")
+    observer=parsed_log.get("observer.mac")
+    server=parsed_log.get("server.mac")
 
     # Return the extracted fields
-    return hostmac
+    return host, client, destination, observer, server
 # Create an instance of RandomInfo
 # ri = Person()
 #
