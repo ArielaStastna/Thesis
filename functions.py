@@ -14,6 +14,7 @@ def print_original(log):
         print(i)
         print("\n")
 def regex_ipv4(file):
+    anon_log= ""
     df = pd.read_table(file)  # using pandas library for big data
     ip_pattern = re.compile(r'(?:\d{1,3}\.){3}\d{1,3}')  # regex for IPv4
 
@@ -21,25 +22,35 @@ def regex_ipv4(file):
 
     with open(file, 'r',
               encoding="utf-8") as rf:  # necessity to change to type of enconding to utf-8 to be able to read the file
-        content = rf.read()
-        matches = ip_pattern.findall(content)  # find all matches meeting the regex condition
-        for ip in matches:  # validation of matches for 0-255 range to prevent false matches
-            tmp = ip.split(".")
-            if (int(tmp[0]) > 255):
-                matches.remove(ip)
-            elif (int(tmp[1]) > 255):
-                matches.remove(ip)
-            elif (int(tmp[2]) > 255):
-                matches.remove(ip)
-            elif (int(tmp[3]) > 255):
-                matches.remove(ip)
-    return matches
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+
+            matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
+            for ip in matches:  # validation of matches for 0-255 range to prevent false matches
+                tmp = ip.split(".")
+                if (int(tmp[0]) > 255):
+                    matches.remove(ip)
+                elif (int(tmp[1]) > 255):
+                    matches.remove(ip)
+                elif (int(tmp[2]) > 255):
+                    matches.remove(ip)
+                elif (int(tmp[3]) > 255):
+                    matches.remove(ip)
+            for ip in matches:
+                line=re.sub(ip,anonymize_ip(ip),line)
+            anon_log+=line
+    new_file=open('anonymized.log', 'w')
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
 
 
 def regex_ipv6(file):
     df = pd.read_table(file)
     ip_pattern = re.compile(r'(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})')
-    # matches=""
     with open(file, 'r', encoding="utf-8") as rf:
         content = rf.read()
         matches = ip_pattern.findall(content)

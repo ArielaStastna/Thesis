@@ -33,13 +33,13 @@ def index():
     return render_template("index.html")
 @app.route('/ipv4')
 def ipv4():
-    matches = ip()
-    anonymized = []
-
-    for addr in matches:
-            ipaddr = str(ipaddress.ip_address(addr))
-            anonymized.append(str(anonymize_ip(ipaddr)))
-    return anonymized
+    # matches = ip()
+    # anonymized = []
+    #
+    # for addr in matches:
+    #         ipaddr = str(ipaddress.ip_address(addr))
+    #         anonymized.append(str(anonymize_ip(ipaddr)))
+    return regex_ipv4('files/waf.log')
 # @app.route('/ipv4')
 # def ipv4():
 #     matches = ip()
@@ -73,7 +73,7 @@ def mac():
 
 def email():
     t1_start = perf_counter()
-    matches = regex_email("files/fortimail.log")
+    matches = regex_email("singlelog.log")
     print_original(matches)
     t2_end = perf_counter()
     print(t1_start)
