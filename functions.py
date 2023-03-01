@@ -6,6 +6,7 @@ import randominfo
 from faker import Faker
 import string
 from urllib.parse import urlparse
+import os
 
 
 def print_original(log):
@@ -275,44 +276,65 @@ def anonymize_url(url):
         new_url += f"#{parts.fragment}"
 
     return new_url
-# Create an instance of RandomInfo
-# ri = Person()
-#
-# # Dictionary to keep track of previously anonymized email addresses
-# anonymized_emails = {}
-#
-#
-# # Function to generate a random email address
-# def generate_random_email(first_name, last_name):
-#     domain = random.choice(
-#         ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'aol.com', 'protonmail.com', 'mail.com',
-#          'tutanota.com', 'zoho.com', 'gmx.com', 'icloud.com', 'yandex.com', 'inbox.com', 'fastmail.com', 'runbox.com',
-#          'posteo.de', 'web.de', 'gmx.net', 'yahoo.co.uk', 'btinternet.com', 'aol.co.uk', 'mail.ru', 'abv.bg',
-#          't-online.de', 'online.no', 'providor.it', 'laposte.net', 'mail.bg', 'telia.com', 'sfr.fr', 'live.no',
-#          'online.nl', 'free.fr', 'home.nl', 'eircom.net', 'poczta.onet.pl', 'verizon.net', 'wanadoo.fr', 'bluewin.ch',
-#          'wp.pl', 'wanadoo.nl', 'hetnet.nl', 'chello.nl', 'swissonline.ch', 'virginmedia.com', 'orange.fr',
-#          'orange.net', 'tele2.nl', 'numericable.fr', 'btconnect.com', 'videotron.ca', 'virgin.net', 'charter.net',
-#          'comcast.net', 'earthlink.net', 'att.net', 'cox.net', 'pacbell.net', 'sbcglobal.net', 'shaw.ca',
-#          'sympatico.ca', 'telus.net'])
-#     username = first_name.lower() + '.' + last_name.lower() + str(
-#         random.randint(0, 999) if random.random() < 0.2 else '')
-#     email = username + '@' + domain
-#     return email
-#
-#
-# # Function to anonymize an email address
-# def anonymize_email(email):
-#     if email in anonymized_emails:
-#         # Return previously anonymized email address
-#         return anonymized_emails[email]
-#     else:
-#         # Get random first and last names
-#         first_name = ri.get_first_name()
-#         last_name = ri.get_last_name()
-#         # Generate random email address
-#         anonymized_email = generate_random_email(first_name, last_name)
-#         # Add anonymized email to dictionary
-#         anonymized_emails[email] = anonymized_email
-#         return anonymized_email
-#
 
+anonymized_names = {}
+def anonymize_name(name):
+    fake = Faker()
+    fake.name() # initialize the provider to generate names
+    return fake.name()
+
+anonymized_linux_paths = {}
+fake = Faker()
+
+def anonymize_linux_path(path):
+    if not os.path.isabs(path):
+        return path  # Return the original path if it's not absolute
+
+    # Get the file extension (if it exists)
+    filename, ext = os.path.splitext(path)
+
+    # Generate a new random path in the Linux format
+    new_path = os.path.join('/', *fake.words(nb=3, ext_word_list=None))
+
+    # Add the original file extension (if it exists)
+    if ext:
+        new_path += ext
+
+    # Replace the original path with the new path
+    return new_path
+
+anonymized_win_paths = {}
+fake = Faker()
+
+def anonymize_windows_path(path):
+    if not os.path.isabs(path):
+        return path  # Return the original path if it's not absolute
+
+    # Split the path into components
+    drive, tail = os.path.splitdrive(path)
+    path_components = tail.split('\\')
+
+    # Anonymize the path components
+    anonymized_components = []
+    for component in path_components:
+        if component in ('Windows', 'Program Files', 'Program Files (x86)', 'Users', 'System32'):
+            # Preserve common directories
+            anonymized_components.append(component)
+        else:
+            # Generate a new random directory name
+            anonymized_components.append(fake.word())
+
+    # Reconstruct the path with the anonymized components
+    anonymized_path = drive + '\\' + '\\'.join(anonymized_components)
+    return anonymized_path
+
+anonymized_usernames = {}
+fake = Faker()
+
+def anonymize_username(username):
+    return fake.user_name()
+
+anonymized_organizations = {}
+def anonymize_organization(org_name):
+    fake = Faker()
+    return fake.company()
