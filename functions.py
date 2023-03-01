@@ -4,9 +4,8 @@ import socket
 import random
 import randominfo
 from faker import Faker
-import json
-import logparser
-from logparser.logparser import*
+import string
+from urllib.parse import urlparse
 
 
 def print_original(log):
@@ -49,23 +48,55 @@ def regex_ipv4(file):
 
 
 def regex_ipv6(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(r'(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})')
+    ip_pattern = re.compile(r'\b(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}\b|\b(?:[a-fA-F0-9]{1,4}:){1,7}:(?::[a-fA-F0-9]{1,4}){1,6}\b')
+    # ip_pattern = re.compile(r'(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})')
     with open(file, 'r', encoding="utf-8") as rf:
-        content = rf.read()
-        matches = ip_pattern.findall(content)
-    return matches
+        content = rf.readlines()
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+            matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
+
+            for ipv6_address in matches:
+                 line = re.sub(ipv6_address, anonymize_ipv6(ipv6_address), line)
+            anon_log += line
+    new_file = open('a.log', 'w')
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
 
 
 def regex_email(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(r"(?P<email_address>[\w\.-]+@[\w\.-]+\.[\w]+)")
+    email_pattern = re.compile(r"(?P<email_address>[\w\.-]+@[\w\.-]+\.[\w]+)")
     # matches=""
+    with open(file, 'r', encoding="utf-8") as rf:
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+            matches = email_pattern.findall(line)
+            for email in matches:
+                line = re.sub(email, anonymize_email(email), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def regex_url(file):
+    df = pd.read_table(file)
+    ip_pattern = re.compile(r"(?i)\b((?:https?://|www\.)\S+)\b")
     with open(file, 'r', encoding="utf-8") as rf:
         content = rf.read()
         matches = ip_pattern.findall(content)
     return matches
-
 
 def regex_mac(file):
     df = pd.read_table(file)
@@ -152,6 +183,19 @@ def anonymize_ip(ip_address):
 
     return anonymized_ip
 
+ipv6_dictionary={}
+def anonymize_ipv6(ipv6_address):
+    # Split the IPv6 address into its 8 16-bit blocks
+    blocks = ipv6_address.split(':')
+
+    # Replace one random block with a new random value
+    random_index = random.randint(0, 7)
+    blocks[random_index] = '{:04x}'.format(random.randint(0, 2**16-1))
+
+    # Join the blocks back together into an IPv6 address
+    anonymized_ipv6 = ':'.join(blocks)
+
+    return anonymized_ipv6
 # Create Faker instance for generating fake MAC addresses
 fake = Faker()
 
@@ -212,24 +256,25 @@ def anonymize_email(email):
         anonymized_emails[email] = anonymized_email
         return anonymized_email
 
-def parse_log_mac(filename):
-    # Read the JSON log message from the file
-    with open(filename, 'r') as f:
-        log_message = f.read()
+anonymized_urls = {}
+def anonymize_url(url):
+    # Parse the URL into its components
+    parts = urlparse(url)
 
-    # Parse the log message using Metakeys
-    parser = LogParser()
-    parsed_log = parser.parse(log_message, format='json')
+    # Generate a random domain using the faker library
+    faker = Faker()
+    domain = faker.domain_name()
 
-    # Extract the fields from the parsed log
-    host= parsed_log.get('host.mac')
-    client=parsed_log.get("client.mac")
-    destination=parsed_log.get("destination.mac")
-    observer=parsed_log.get("observer.mac")
-    server=parsed_log.get("server.mac")
+    # Construct a new URL using the random domain
+    new_url = f"{parts.scheme}://{domain}{parts.path}"
 
-    # Return the extracted fields
-    return host, client, destination, observer, server
+    # Add any query parameters or fragments back to the new URL
+    if parts.query:
+        new_url += f"?{parts.query}"
+    if parts.fragment:
+        new_url += f"#{parts.fragment}"
+
+    return new_url
 # Create an instance of RandomInfo
 # ri = Person()
 #
@@ -270,20 +315,4 @@ def parse_log_mac(filename):
 #         anonymized_emails[email] = anonymized_email
 #         return anonymized_email
 #
-#
-# # def generate_random_email():
-#     ri = RandomInfo()
-#     first_name = ri.first_name()
-#     last_name = ri.last_name()
-#     domain_list = ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'aol.com', 'protonmail.com', 'mail.com', 'tutanota.com', 'zoho.com', 'gmx.com', 'icloud.com', 'yandex.com', 'inbox.com', 'fastmail.com', 'runbox.com', 'posteo.de', 'web.de', 'gmx.net', 'yahoo.co.uk', 'btinternet.com', 'aol.co.uk', 'mail.ru', 'abv.bg', 't-online.de', 'online.no', 'providor.it', 'laposte.net', 'mail.bg', 'telia.com', 'sfr.fr', 'live.no', 'online.nl', 'free.fr', 'home.nl', 'eircom.net', 'poczta.onet.pl', 'verizon.net', 'wanadoo.fr', 'bluewin.ch', 'wp.pl', 'wanadoo.nl', 'hetnet.nl', 'chello.nl', 'swissonline.ch', 'virginmedia.com', 'orange.fr', 'orange.net', 'tele2.nl', 'numericable.fr', 'btconnect.com', 'videotron.ca', 'virgin.net', 'charter.net', 'comcast.net', 'earthlink.net', 'att.net', 'cox.net', 'pacbell.net', 'sbcglobal.net', 'shaw.ca', 'sympatico.ca', 'telus.net']
-#     domain = random.choice(domain_list)
-#     email = ""
-#     if random.choice([True, False]):
-#         email += first_name.lower() + '.'
-#     if random.choice([True, False]):
-#         email += last_name.lower() + '.'
-#     if random.choice([True, False]):
-#         email += str(random.randint(0, 999)) + '.'
-#     email += domain
-#     return email
 

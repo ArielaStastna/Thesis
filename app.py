@@ -40,24 +40,11 @@ def ipv4():
     #         ipaddr = str(ipaddress.ip_address(addr))
     #         anonymized.append(str(anonymize_ip(ipaddr)))
     return regex_ipv4('files/waf.log')
-# @app.route('/ipv4')
-# def ipv4():
-#     matches = ip()
-#     anonymized = []
-#     for i in matches:
-#         anonymized_ip = anonymize_ip(i)
-#         # if anonymized_ip is None:
-#         #     # If the input is not a valid IPv4 address, return an error message.
-#         #     return jsonify({'error': f'{i} is not a valid IPv4 address.'}), 400
-#         # else:
-#         anonymized.append(anonymized_ip)
-#     return jsonify(anonymized)
+
 
 @app.route('/ipv6')
 def ipv6():
-    matches = regex_ipv6("files/linux.log")
-    print_original(matches)
-    return matches
+    return regex_ipv6('files/linux.log')
 @app.route('/mail')
 def mail():
     matches=email()
@@ -66,10 +53,6 @@ def mail():
         emailadd=address
         anonymized.append(anonymize_email(emailadd))
     return anonymized
-@app.route('/mac')
-def mac():
-    matches=parse_log_mac('windows-log-radka.json')
-    return matches
 
 def email():
     t1_start = perf_counter()
@@ -96,16 +79,7 @@ def mac_address():
     print(t1_start)
     print(t2_end)
     return matches
-    # df = pd.read_table("dataset.txt")
-    # ip_pattern = re.compile(r'(?:\d{1,3}\.){3}\d{1,3}')
-    # matches=""
-    # if not os.path.exists("iters.txt"):
-    #     with open('dataset.txt', 'r') as rf, open('iters.txt', 'a') as wf:
-    #         content = rf.read()
-    #         matches = ip_pattern.findall(content)
-    #         for match in matches:
-    #             wf.write(match + '\n')
-    # return matches
+
 
 @app.route('/linux-directory')
 def linux_directory():
@@ -183,213 +157,6 @@ def directory_linux_db():
     cur.close()
     conn.close()
     return "Directory values successfully added to the database!"
-# @app.route('/json_domain')
-# def json_domain():
-#  with open("files/example.json", "r") as file:
-#     fileData = file.read()
-#     jsonData = json.loads(fileData)
-#     metavalues=[]
-#     try:
-#      metavalues.append(jsonData["client.domain"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["client.registrated_domain"])
-#     except KeyError:
-#      print('No such value.')
-#      try:
-#          metavalues.append(jsonData["destination.domain"])
-#      except KeyError:
-#          print('No such value.')
-#      try:
-#          metavalues.append(jsonData["destination.registrated_domain"])
-#      except KeyError:
-#          print('No such value.')
-#     try:
-#         metavalues.append(jsonData["server.domain"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["source.domain"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["source.registrated_domain"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["url.domain"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["user.domain"])
-#     except KeyError:
-#         print('No such value.')
-#  return metavalues
-#
-#
-# @app.route('/json_dom')
-# def json_dom():
-#     with open("files/windows-log-regina.json", "r") as file:
-#         fileData = file.read()
-#         jsonData = json.loads(fileData)
-#
-#     keys = [
-#         "client.domain",
-#         "client.registrated_domain",
-#         "destination.domain",
-#         "destination.registrated_domain",
-#         "server.domain",
-#         "source.domain",
-#         "source.registrated_domain",
-#         "url.domain",
-#         "user.domain"
-#     ]
-#
-#     metavalues = [jsonData.get(key, 'No such value.') for key in keys]
-#
-#     return metavalues
-# @app.route('/json_email')
-# def json_email():
-#  with open("files/example.json", "r") as file:
-#     fileData = file.read()
-#     jsonData = json.loads(fileData)
-#     metavalues=[]
-#     try:
-#      metavalues.append(jsonData["email.bcc.address"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#         metavalues.append(jsonData["email.cc.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["email.from.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["email.reply_to.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["email.sender.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["email.to.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["threat.enrichments.indicator.email.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["threat.indicator.email.address"])
-#     except KeyError:
-#         print('No such value.')
-#     try:
-#         metavalues.append(jsonData["user.email"])
-#     except KeyError:
-#         print('No such value.')
-#  return metavalues
-
-# @app.route('/json_directory')
-# def json_directory():
-#  with open("files/example.json", "r") as file:
-#     fileData = file.read()
-#     jsonData = json.loads(fileData)
-#     metavalues=[]
-#     try:
-#      metavalues.append(jsonData["file.directory"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["file.path"])
-#     except KeyError:
-#      print('No such value.')
-#  return metavalues
-# @app.route('/json_ip')
-# def json_ip():
-#  with open("files/example.json", "r") as file:
-#     fileData = file.read()
-#     jsonData = json.loads(fileData)
-#     metavalues=[]
-#     try:
-#      metavalues.append(jsonData["client.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["client.nat.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["destination.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["destination.nat.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["host.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["observer.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["related.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["server.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["server.nat.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["source.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["source.nat.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["threat.enrichments.indicator.ip"])
-#     except KeyError:
-#      print('No such value.')
-#     try:
-#      metavalues.append(jsonData["threat.indicator.ip"])
-#     except KeyError:
-#      print('No such value.')
-#
-#  return metavalues
-# @app.route('/json')
-# def get_ip_values():
-#     with open("files/windows-log-regina.json", "r") as file:
-#         jsonData = json.load(file)
-#         metavalues = [
-#             jsonData.get("ip"),
-#             jsonData.get("client.ip"),
-#             jsonData.get("client.nat.ip"),
-#             jsonData.get("destination.ip"),
-#             jsonData.get("destination.nat.ip"),
-#             jsonData.get("host.ip"),
-#             jsonData.get("observer.ip"),
-#             jsonData.get("related.ip"),
-#             jsonData.get("server.ip"),
-#             jsonData.get("server.nat.ip"),
-#             jsonData.get("source.ip"),
-#             jsonData.get("source.nat.ip"),
-#             jsonData.get("threat.enrichments.indicator.ip"),
-#             jsonData.get("threat.indicator.ip")
-#         ]
-#         return [ip for ip in metavalues if ip is not None]
-
 
 
 if __name__ == '__main__':
