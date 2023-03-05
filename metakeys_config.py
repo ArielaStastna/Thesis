@@ -3,7 +3,7 @@ class Elasticsearch:
     IP_KEYS=["client.ip", "client.nat.ip", "destination.ip", "destination.nat.ip", "host.ip", "observer.ip", "related.ip", "server.ip", "server.nat.ip", "source.ip", "source.nat.ip", "threat.enrichments.indicator.ip", "threat.indicator.ip"]
     DOMAIN_KEYS=["client.domain", "client.registrated_domain", "destination.domain", "destination.registrated_domain", "server.domain", "source.domain", "source.registrated_domain", "url.domain", "user.domain"]
     DIRECTORY_KEYS=["file.directory", "file.path"]
-    MAC_KEYS = ["observer.mac", "client.mac", "host.mac", "estination.mac", "server.mac", "source.mac"]
+    MAC_KEYS = ["observer.mac", "client.mac", "host.mac", "destination.mac", "server.mac", "source.mac"]
     USERNAME_KEYS=["agent.name", "user.name", "host.name"]
     FULLNAME_KEYS=["user.full_name"]
     URL_KEYS=["url.full", "url.original"]

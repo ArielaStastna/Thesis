@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 import psycopg2
 from functions import*
 from time import perf_counter
@@ -8,14 +8,41 @@ import ipaddress
 
 app = Flask(__name__)
 
-def db_connection():#connection to DB using psycopg2 library
-    conn = psycopg2.connect(database="thesis",
-                            host="localhost",
-                            user="xyz",#zmenit
-                            password="xyz",
-                            port=5432
-                            )
-    return conn
+# def db_connection():#connection to DB using psycopg2 library
+#     conn = psycopg2.connect(database="thesis",
+#                             host="localhost",
+#                             user="xyz",#zmenit
+#                             password="xyz",
+#                             port=5432
+#                             )
+    # return conn
+@app.route('/anon')
+def anon():
+    return complete_anonymization("singlelog.log")
+@app.route('/json')
+def json_form():
+    return render_template('json.html')
+@app.route('/json', methods=['POST'])
+def json():
+    logs=request.get_json(True)
+    #return read_json(logs)
+    return logs
+@app.route('/upload')
+def upload_form():
+    return render_template('upload.html')
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    # Get the uploaded file from the request
+    file = request.files['file']
+
+    # Save the file to disk
+    #file.save('C:\\Users\\Asus\\Desktop\\zadania\\datasets\\an.log')
+
+    # Return a response to the client
+    return complete_anonymization(file)
+
+
 @app.route('/settings')
 def settings():
     return render_template ("settings.html")
@@ -95,68 +122,68 @@ def windows_directory():
     print(t1_start)
     print(t2_end)
     return matches
-@app.route('/findall')
-def findall():
-    windows_directory()
-    mac_address()
-    email()
-    ip()
-    return "Check your console."
-@app.route('/ipdb')#function for filling the database
-def ipdb():
-        matches = ip()
-        conn = db_connection()
-        cur = conn.cursor()
-        for singleIP in matches: #every single match is stored in database
-            cur.execute("INSERT INTO anon_ip (original, id_category) VALUES (%s, 1)", [singleIP])#the id_category refers to the category of sensitive data
-        conn.commit()
-        cur.close()
-        conn.close()
-        return "IP address values successfully added to the database!"
-@app.route('/emaildb')
-def emaildb():
-    matches = email()
-    conn = db_connection()
-    cur = conn.cursor()
-    for single_email in matches:
-        cur.execute("INSERT INTO anon_email (original, id_category) VALUES (%s, 5)", [single_email])
-    conn.commit()
-    cur.close()
-    conn.close()
-    return "Email values successfully added to the database!"
-@app.route('/macdb')
-def macdb():
-    matches = mac_address()
-    conn = db_connection()
-    cur = conn.cursor()
-    for singleMAC in matches:
-        cur.execute("INSERT INTO anon_mac (original, id_category) VALUES (%s, 2)", [singleMAC])
-    conn.commit()
-    cur.close()
-    conn.close()
-    return "MAC address values successfully added to the database!"
-@app.route('/directorydb')
-def directorydb():
-    matches = windows_directory()
-    conn = db_connection()
-    cur = conn.cursor()
-    for single_directory in matches:
-        cur.execute("INSERT INTO anon_windows_directory (original, id_category) VALUES (%s, 13)", [single_directory])
-    conn.commit()
-    cur.close()
-    conn.close()
-    return "Directory values successfully added to the database!"
-@app.route('/directorylinux')
-def directory_linux_db():
-    matches = linux_directory()
-    conn = db_connection()
-    cur = conn.cursor()
-    for single_directory in matches:
-        cur.execute("INSERT INTO anon_linux_directory (original, id_category) VALUES (%s, 12)", [single_directory])
-    conn.commit()
-    cur.close()
-    conn.close()
-    return "Directory values successfully added to the database!"
+# @app.route('/findall')
+# def findall():
+#     windows_directory()
+#     mac_address()
+#     email()
+#     ip()
+#     return "Check your console."
+# @app.route('/ipdb')#function for filling the database
+# def ipdb():
+#         matches = ip()
+#         conn = db_connection()
+#         cur = conn.cursor()
+#         for singleIP in matches: #every single match is stored in database
+#             cur.execute("INSERT INTO anon_ip (original, id_category) VALUES (%s, 1)", [singleIP])#the id_category refers to the category of sensitive data
+#         conn.commit()
+#         cur.close()
+#         conn.close()
+#         return "IP address values successfully added to the database!"
+# @app.route('/emaildb')
+# def emaildb():
+#     matches = email()
+#     conn = db_connection()
+#     cur = conn.cursor()
+#     for single_email in matches:
+#         cur.execute("INSERT INTO anon_email (original, id_category) VALUES (%s, 5)", [single_email])
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return "Email values successfully added to the database!"
+# @app.route('/macdb')
+# def macdb():
+#     matches = mac_address()
+#     conn = db_connection()
+#     cur = conn.cursor()
+#     for singleMAC in matches:
+#         cur.execute("INSERT INTO anon_mac (original, id_category) VALUES (%s, 2)", [singleMAC])
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return "MAC address values successfully added to the database!"
+# @app.route('/directorydb')
+# def directorydb():
+#     matches = windows_directory()
+#     conn = db_connection()
+#     cur = conn.cursor()
+#     for single_directory in matches:
+#         cur.execute("INSERT INTO anon_windows_directory (original, id_category) VALUES (%s, 13)", [single_directory])
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return "Directory values successfully added to the database!"
+# @app.route('/directorylinux')
+# def directory_linux_db():
+#     matches = linux_directory()
+#     conn = db_connection()
+#     cur = conn.cursor()
+#     for single_directory in matches:
+#         cur.execute("INSERT INTO anon_linux_directory (original, id_category) VALUES (%s, 12)", [single_directory])
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return "Directory values successfully added to the database!"
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import re
 import socket
@@ -7,6 +9,8 @@ from faker import Faker
 import string
 from urllib.parse import urlparse
 import os
+
+from metakeys_config import Elasticsearch
 
 
 def print_original(log):
@@ -47,7 +51,22 @@ def regex_ipv4(file):
     new_file.close()
     return anon_log
 
-
+def anonymize_ipv4_line(line):
+    ip_pattern = re.compile(r'(?:\d{1,3}\.){3}\d{1,3}')  # regex for IPv4
+    matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
+    for ip in matches:  # validation of matches for 0-255 range to prevent false matches
+        tmp = ip.split(".")
+        if (int(tmp[0]) > 255):
+            matches.remove(ip)
+        elif (int(tmp[1]) > 255):
+            matches.remove(ip)
+        elif (int(tmp[2]) > 255):
+            matches.remove(ip)
+        elif (int(tmp[3]) > 255):
+            matches.remove(ip)
+    for ip in matches:
+        line=re.sub(ip,anonymize_ip(ip),line)
+    return line
 def regex_ipv6(file):
     anon_log = ""
     df = pd.read_table(file)
@@ -70,7 +89,13 @@ def regex_ipv6(file):
     new_file.close()
     return anon_log
 
+def anonymize_ipv6_line(line):
+    ip_pattern = re.compile(r'\b(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}\b|\b(?:[a-fA-F0-9]{1,4}:){1,7}:(?::[a-fA-F0-9]{1,4}){1,6}\b')
+    matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
 
+    for ipv6_address in matches:
+         line = re.sub(ipv6_address, anonymize_ipv6(ipv6_address), line)
+    return line
 def regex_email(file):
     anon_log = ""
     df = pd.read_table(file)
@@ -90,6 +115,13 @@ def regex_email(file):
     new_file.write(anon_log)
     new_file.close()
     return anon_log
+
+def anonymize_email_line(line):
+    email_pattern = re.compile(r"(?P<email_address>[\w\.-]+@[\w\.-]+\.[\w]+)")
+    matches = email_pattern.findall(line)
+    for email in matches:
+        line = re.sub(email, anonymize_email(email), line)
+    return line
 
 def regex_url(file):
     df = pd.read_table(file)
@@ -201,18 +233,18 @@ def anonymize_ipv6(ipv6_address):
 fake = Faker()
 
 # Dictionary to keep track of previously anonymized MAC addresses
-anonymized_macs = {}
+mac_dictionary = {}
 
 # Function to anonymize a MAC address
 def anonymize_mac(mac):
-    if mac in anonymized_macs:
+    if mac in mac_dictionary:
         # Return previously anonymized MAC address
-        return anonymized_macs[mac]
+        return mac_dictionary[mac]
     else:
         # Generate random MAC address
         anonymized_mac = fake.mac_address()
         # Add anonymized MAC to dictionary
-        anonymized_macs[mac] = anonymized_mac
+        mac_dictionary[mac] = anonymized_mac
         # Return anonymized MAC address
         return anonymized_mac
 
@@ -243,22 +275,31 @@ def get_email():
         email = randominfo.get_first_name() + randominfo.get_last_name() + randominfo.get_formatted_datetime("%y", randominfo.get_birthdate(None), "%d %b, %Y") + dmn
     return email
 # Dictionary to keep track of previously anonymized email addresses
-anonymized_emails = {}
+email_dictionary = {}
 
 # Function to anonymize an email address
 def anonymize_email(email):
-    if email in anonymized_emails:
+    if email in email_dictionary:
         # Return previously anonymized email address
-        return anonymized_emails[email]
+        return email_dictionary[email]
     else:
         # Get random first and last names
         anonymized_email = get_email()
         # Add anonymized email to dictionary
-        anonymized_emails[email] = anonymized_email
+        email_dictionary[email] = anonymized_email
         return anonymized_email
 
-anonymized_urls = {}
+
+url_dictionary = {}
+
+
 def anonymize_url(url):
+    global url_dictionary
+
+    # Check if the URL is already anonymized
+    if url in url_dictionary:
+        return url_dictionary[url]
+
     # Parse the URL into its components
     parts = urlparse(url)
 
@@ -275,20 +316,35 @@ def anonymize_url(url):
     if parts.fragment:
         new_url += f"#{parts.fragment}"
 
+    # Add the anonymized URL to the dictionary
+    url_dictionary[url] = new_url
+
     return new_url
 
-anonymized_names = {}
-def anonymize_name(name):
-    fake = Faker()
-    fake.name() # initialize the provider to generate names
-    return fake.name()
 
-anonymized_linux_paths = {}
+name_dictionary = {}
+
+
+def anonymize_name(name):
+    # Check if the name has already been anonymized
+    if name in name_dictionary:
+        return name_dictionary[name]
+
+    # Generate a new fake name and store it in the dictionary
+    fake_name = fake.name()
+    name_dictionary[name] = fake_name
+
+    return fake_name
+linux_path_dictionary = {}
 fake = Faker()
 
 def anonymize_linux_path(path):
     if not os.path.isabs(path):
         return path  # Return the original path if it's not absolute
+
+    # Check if the path has been previously anonymized
+    if path in linux_path_dictionary:
+        return linux_path_dictionary[path]  # Return the previously anonymized path
 
     # Get the file extension (if it exists)
     filename, ext = os.path.splitext(path)
@@ -300,15 +356,23 @@ def anonymize_linux_path(path):
     if ext:
         new_path += ext
 
-    # Replace the original path with the new path
+    # Add the newly generated path to the dictionary
+    linux_path_dictionary[path] = new_path
+
+    # Return the newly generated path
     return new_path
 
-anonymized_win_paths = {}
+
+win_path_dictionary = {}
 fake = Faker()
 
 def anonymize_windows_path(path):
     if not os.path.isabs(path):
         return path  # Return the original path if it's not absolute
+
+    # Check if the path has already been anonymized
+    if path in win_path_dictionary:
+        return win_path_dictionary[path]
 
     # Split the path into components
     drive, tail = os.path.splitdrive(path)
@@ -321,20 +385,72 @@ def anonymize_windows_path(path):
             # Preserve common directories
             anonymized_components.append(component)
         else:
-            # Generate a new random directory name
-            anonymized_components.append(fake.word())
+            if component in win_path_dictionary:
+                # Use the previously generated anonymized name
+                anonymized_component = win_path_dictionary[component]
+            else:
+                # Generate a new random directory name
+                anonymized_component = fake.word()
+                win_path_dictionary[component] = anonymized_component
+
+            anonymized_components.append(anonymized_component)
 
     # Reconstruct the path with the anonymized components
     anonymized_path = drive + '\\' + '\\'.join(anonymized_components)
+
+    # Store the anonymized path in the dictionary
+    win_path_dictionary[path] = anonymized_path
+
     return anonymized_path
 
-anonymized_usernames = {}
-fake = Faker()
 
+username_dictionary = {}
 def anonymize_username(username):
-    return fake.user_name()
+    if username in username_dictionary :
+        return username_dictionary [username]
+    else:
+        anonymized_username = fake.user_name()
+        username_dictionary [username] = anonymized_username
+        return anonymized_username
 
-anonymized_organizations = {}
+organizations_dictionary = {}
 def anonymize_organization(org_name):
-    fake = Faker()
-    return fake.company()
+    if org_name in organizations_dictionary:
+        # Return the previously anonymized value for this organization name
+        return organizations_dictionary[org_name]
+    else:
+        # Generate a new fake company name
+        fake_org_name = fake.company()
+        # Add the new mapping to the dictionary
+        organizations_dictionary[org_name] = fake_org_name
+        # Return the anonymized company name
+        return fake_org_name
+
+def complete_anonymization(logs):
+    anon_log=""
+
+    while True:
+
+        line = logs.readline()
+        if not line:
+            break
+        line=str(line)
+        line=anonymize_ipv4_line(line)
+        line=anonymize_ipv6_line(line)
+        line=anonymize_email_line(line)
+        anon_log += line
+    return anon_log
+
+def read_json(logs):
+    metavalues=[]
+
+    fileData = logs.read()
+    jsonData = json.loads(fileData)
+    obj=Elasticsearch()
+    for metakey in obj.IP_KEYS:
+        try:
+
+            metavalues.append(jsonData[metakey])
+        except KeyError:
+            pass
+    return metavalues
