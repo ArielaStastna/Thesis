@@ -124,31 +124,107 @@ def anonymize_email_line(line):
     return line
 
 def regex_url(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(r"(?i)\b((?:https?://|www\.)\S+)\b")
+    url_pattern = re.compile(r'(?i)\b((?:https?:\/\/|www\.)\S+)\b')
     with open(file, 'r', encoding="utf-8") as rf:
-        content = rf.read()
-        matches = ip_pattern.findall(content)
-    return matches
+        while True:
 
+            line = rf.readline()
+            if not line:
+                break
+            matches = url_pattern.findall(line)
+            for url in matches:
+                line = re.sub(url, anonymize_url(url), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_url_line(line):
+    url_pattern = re.compile(r'(?i)\b((?:https?:\/\/|www\.)\S+)\b')
+    matches = url_pattern.findall(line)
+    for url in matches:
+        line = re.sub(url, anonymize_url(url), line)
+    return line
+def regex_domain(file):
+    anon_log = ""
+    df = pd.read_table(file)
+    domain_pattern = re.compile(r'\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+    with open(file, 'r', encoding="utf-8") as rf:
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+            matches = domain_pattern.findall(line)
+            for domain in matches:
+                line = re.sub(domain, anonymize_domain(domain), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_domain_line(line):
+    domain_pattern = re.compile(r'\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+    matches = domain_pattern.findall(line)
+    for domain in matches:
+        line = re.sub(domain, anonymize_domain(domain), line)
+    return line
 def regex_mac(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(
-        r"[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}")
+    mac_pattern = re.compile(r"[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}")
     with open(file, 'r', encoding="utf-8") as rf:
-        content = rf.read()
-        matches = ip_pattern.findall(content)
-    return matches
+        while True:
 
+            line = rf.readline()
+            if not line:
+                break
+            matches = mac_pattern.findall(line)
+            for mac in matches:
+                line = re.sub(mac, anonymize_mac(mac), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_mac_line(line):
+    mac_pattern = re.compile(r'\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+    matches = mac_pattern.findall(line)
+    for mac in matches:
+        line = re.sub(mac, anonymize_mac(mac), line)
+    return line
 
 def regex_linux_directory(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(r"(\/.*?\/)((?:[^\/]|\\\/)+?)(?:(?<!\\)\s|$)")
-    with open(file, 'r') as rf:
-        content = rf.read()
-        matches = ip_pattern.findall(content)
-    return matches
+    linux_pattern = re.compile(
+        r"(\/.*?\/)((?:[^\/]|\\\/)+?)(?:(?<!\\)\s|$)")
+    with open(file, 'r', encoding="utf-8") as rf:
+        while True:
 
+            line = rf.readline()
+            if not line:
+                break
+            matches = linux_pattern.findall(line)
+            for path in matches:
+                line = re.sub(path, anonymize_linux_path(path), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_linux_line(line):
+    linux_pattern = re.compile(r"(\/.*?\/)((?:[^\/]|\\\/)+?)(?:(?<!\\\\)\s|$)")
+    matches = linux_pattern.findall(line)
+    for path, _ in matches:
+        line = re.sub(path, anonymize_linux_path(path), line)
+    return line
 
 def regex_windows_directory(file):
     df = pd.read_table(file)
@@ -321,7 +397,15 @@ def anonymize_url(url):
 
     return new_url
 
-
+domains_dictionary = {}
+def anonymize_domain(domain):
+    if domain in domains_dictionary:
+        return domains_dictionary[domain]
+    else:
+        fake = Faker()
+        anonymized_domain = fake.domain_name()
+        domains_dictionary[domain] = anonymized_domain
+        return anonymized_domain
 name_dictionary = {}
 
 
@@ -438,14 +522,19 @@ def complete_anonymization(logs):
         line=anonymize_ipv4_line(line)
         line=anonymize_ipv6_line(line)
         line=anonymize_email_line(line)
+        line = anonymize_url_line(line)
+        line=anonymize_domain_line(line)
+        line=anonymize_mac_line(line)
+        line=anonymize_linux_line(line)
         anon_log += line
     return anon_log
 
 def read_json(logs):
     metavalues=[]
 
-    fileData = logs.read()
-    jsonData = json.loads(fileData)
+    #fileData = logs.read()
+    jsonData = json.loads(logs)
+    jsonData=str(jsonData)
     obj=Elasticsearch()
     for metakey in obj.IP_KEYS:
         try:
@@ -454,3 +543,4 @@ def read_json(logs):
         except KeyError:
             pass
     return metavalues
+

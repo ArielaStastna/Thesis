@@ -19,14 +19,14 @@ app = Flask(__name__)
 @app.route('/anon')
 def anon():
     return complete_anonymization("singlelog.log")
-@app.route('/json')
-def json_form():
-    return render_template('json.html')
+# @app.route('/json')
+# def json_form():
+#     return render_template('json.html')
 @app.route('/json', methods=['POST'])
 def json():
     logs=request.get_json(True)
-    #return read_json(logs)
-    return logs
+    return read_json(logs)
+
 @app.route('/upload')
 def upload_form():
     return render_template('upload.html')
@@ -43,9 +43,9 @@ def upload_file():
     return complete_anonymization(file)
 
 
-@app.route('/settings')
-def settings():
-    return render_template ("settings.html")
+# @app.route('/settings')
+# def settings():
+#     return render_template ("settings.html")
 #function looking for IPv4 matches in log files
 def ip():
     t1_start = perf_counter()
