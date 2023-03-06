@@ -126,7 +126,7 @@ def anonymize_email_line(line):
 def regex_url(file):
     anon_log = ""
     df = pd.read_table(file)
-    url_pattern = re.compile(r'(?i)\b((?:https?:\/\/|www\.)\S+)\b')
+    url_pattern = re.compile('(?i)\b((?:https?:\/\/|www\.)\S+)\b')
     with open(file, 'r', encoding="utf-8") as rf:
         while True:
 
@@ -143,7 +143,7 @@ def regex_url(file):
     return anon_log
 
 def anonymize_url_line(line):
-    url_pattern = re.compile(r'(?i)\b((?:https?:\/\/|www\.)\S+)\b')
+    url_pattern = re.compile('(?i)\b((?:https?:\/\/|www\.)\S+)\b')
     matches = url_pattern.findall(line)
     for url in matches:
         line = re.sub(url, anonymize_url(url), line)
@@ -151,7 +151,7 @@ def anonymize_url_line(line):
 def regex_domain(file):
     anon_log = ""
     df = pd.read_table(file)
-    domain_pattern = re.compile(r'\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+    domain_pattern = re.compile(r"\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
     with open(file, 'r', encoding="utf-8") as rf:
         while True:
 
@@ -193,7 +193,7 @@ def regex_mac(file):
     return anon_log
 
 def anonymize_mac_line(line):
-    mac_pattern = re.compile(r'\b[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+    mac_pattern = re.compile(r'[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}\:[0-9a-fA-F]{2}')
     matches = mac_pattern.findall(line)
     for mac in matches:
         line = re.sub(mac, anonymize_mac(mac), line)
@@ -220,21 +220,38 @@ def regex_linux_directory(file):
     return anon_log
 
 def anonymize_linux_line(line):
-    linux_pattern = re.compile(r"(\/.*?\/)((?:[^\/]|\\\/)+?)(?:(?<!\\\\)\s|$)")
+    linux_pattern = re.compile(r"(\/.*?\/)((?:[^\/]|\\\/)+?)(?:(?<!\\)\s|$)")
     matches = linux_pattern.findall(line)
-    for path, _ in matches:
+    for path in matches:
         line = re.sub(path, anonymize_linux_path(path), line)
     return line
 
 def regex_windows_directory(file):
+    anon_log = ""
     df = pd.read_table(file)
-    ip_pattern = re.compile(r"[a-zA-Z]:\\((?:.*?\\)*).[^\s]*")
+    win_pattern = re.compile(
+        r"[a-zA-Z]:\\((?:.*?\\)*).[^\s]*")
     with open(file, 'r', encoding="utf-8") as rf:
-        content = rf.read()
-        matches = ip_pattern.findall(content)
-    return matches
+        while True:
 
+            line = rf.readline()
+            if not line:
+                break
+            matches = win_pattern.findall(line)
+            for path in matches:
+                line = re.sub(path, anonymize_windows_path(path), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
 
+def anonymize_windows_line(line):
+    win_pattern = re.compile((r"[a-zA-Z]:\\\\((?:.*?\\\\)*).[^\s]*"))
+    matches = win_pattern.findall(line)
+    for path in matches:
+        line = re.sub(path, anonymize_windows_path(path), line)
+    return line
 # Function to generate a random private IP address
 def generate_random_private_ip(private_range):
     # convert IP range strings to integers
@@ -328,7 +345,7 @@ fake=Faker()
 def get_email():
     # Generate a random word to use in domain name
     word = fake.word()
-
+    
     # Generate a random base domain name
     base_domain = fake.domain_name()
 
@@ -447,6 +464,7 @@ def anonymize_linux_path(path):
     return new_path
 
 
+
 win_path_dictionary = {}
 fake = Faker()
 
@@ -459,7 +477,7 @@ def anonymize_windows_path(path):
         return win_path_dictionary[path]
 
     # Split the path into components
-    drive, tail = os.path.splitdrive(path)
+    drive, tail = os.path.splitdrive(str(path))
     path_components = tail.split('\\')
 
     # Anonymize the path components
@@ -486,6 +504,7 @@ def anonymize_windows_path(path):
     win_path_dictionary[path] = anonymized_path
 
     return anonymized_path
+
 
 
 username_dictionary = {}
@@ -521,11 +540,12 @@ def complete_anonymization(logs):
         line=str(line)
         line=anonymize_ipv4_line(line)
         line=anonymize_ipv6_line(line)
+        line = anonymize_domain_line(line)
         line=anonymize_email_line(line)
         line = anonymize_url_line(line)
-        line=anonymize_domain_line(line)
         line=anonymize_mac_line(line)
-        line=anonymize_linux_line(line)
+        # line=anonymize_linux_line(line)
+        line = anonymize_windows_line(line)
         anon_log += line
     return anon_log
 
