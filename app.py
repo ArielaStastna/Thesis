@@ -1,13 +1,20 @@
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import psycopg2
+from pip._internal.network import auth
+from flask_httpauth import HTTPTokenAuth
 from functions import*
 from time import perf_counter
 import json
 import ipaddress
-
+from config import*
+from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
+
+app.config.from_pyfile('config.py')
+auth = HTTPTokenAuth(scheme='Bearer')
+app.secret_key = 'your_secret_key'
 # def db_connection():#connection to DB using psycopg2 library
 #     conn = psycopg2.connect(database="thesis",
 #                             host="localhost",
@@ -16,16 +23,26 @@ app = Flask(__name__)
 #                             port=5432
 #                             )
     # return conn
-@app.route('/anon')
-def anon():
-    return complete_anonymization("singlelog.log")
-# @app.route('/json')
-# def json_form():
-#     return render_template('json.html')
+# @app.route('/anon')
+# def anon():
+#     return complete_anonymization("singlelog.log")
+@app.route('/json')
+def json_form():
+    return render_template('json.html')
 @app.route('/json', methods=['POST'])
-def json():
-    logs=request.get_json(True)
-    return read_json(logs)
+def handle_json():
+    f = request.files['file']
+    data = f.read()
+    json_data = json.loads(data)
+    return json_data
+
+# @app.route('/json', methods=['POST'])
+# def json():
+#     logs=request.json
+#     return logs
+@app.route('/tmp')
+def tmp_form():
+    return render_template('tmp.html')
 
 @app.route('/upload')
 def upload_form():
@@ -44,9 +61,27 @@ def upload_file():
 
 
 # @app.route('/settings')
-# def settings():
+# def dictionaries_settings():
 #     return render_template ("settings.html")
-#function looking for IPv4 matches in log files
+@app.route('/settings')
+def empty_dictionaries():
+    clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
+    name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary,
+    email_dictionary, domains_dictionary)
+    print(sys.getsizeof(ip_dictionary))
+    return 'Dictionaries cleared.'
+
+def allowed_file(filename):
+    return "." in filename and \
+           filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+# @auth.verify_token
+def verify_token(token):
+    return token in app.config['TOKENS']
+# @auth.verify_token
+# def verify_token(token):
+#     if token in app.config['TOKENS']:
+#         return True
+#     return False
 def ip():
     t1_start = perf_counter()
     matches = regex_ipv4('files/waf.log') # calling function with the regex;
@@ -57,7 +92,26 @@ def ip():
     return matches
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('login.html')
+@app.route('/protected')
+@auth.login_required
+def protected():
+    return 'This page is protected'
+
+@app.route('/login', methods=['POST'])
+def login():
+    token = request.form['token']
+    if token in app.config['TOKENS']:
+        session['token'] = token
+        return redirect(url_for('protected'))
+    else:
+        return 'Invalid token'
+# @app.route('/')
+# # def index():
+# #     return render_template("index.html")
+# @auth.login_required
+# def index1():
+#     return "Hello, {}!".format(auth.current_user())
 @app.route('/ipv4')
 def ipv4():
     # matches = ip()

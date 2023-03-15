@@ -1,4 +1,5 @@
 import json
+import sys
 
 import pandas as pd
 import re
@@ -66,6 +67,7 @@ def anonymize_ipv4_line(line):
             matches.remove(ip)
     for ip in matches:
         line=re.sub(ip,anonymize_ip(ip),line)
+    print(sys.getsizeof(ip_dictionary))
     return line
 def regex_ipv6(file):
     anon_log = ""
@@ -438,8 +440,11 @@ def anonymize_name(name):
     return fake_name
 linux_path_dictionary = {}
 fake = Faker()
-
 def anonymize_linux_path(path):
+    if isinstance(path, tuple):
+        # Convert the tuple to a string using os.path.abspath()
+        path = os.path.abspath(os.path.join(*path))
+
     if not os.path.isabs(path):
         return path  # Return the original path if it's not absolute
 
@@ -463,6 +468,33 @@ def anonymize_linux_path(path):
     # Return the newly generated path
     return new_path
 
+# linux_path_dictionary = {}
+# fake = Faker()
+#
+# def anonymize_linux_path(path):
+#     if not os.path.isabs(path):
+#         return path  # Return the original path if it's not absolute
+#
+#     # Check if the path has been previously anonymized
+#     if path in linux_path_dictionary:
+#         return linux_path_dictionary[path]  # Return the previously anonymized path
+#
+#     # Get the file extension (if it exists)
+#     filename, ext = os.path.splitext(path)
+#
+#     # Generate a new random path in the Linux format
+#     new_path = os.path.join('/', *fake.words(nb=3, ext_word_list=None))
+#
+#     # Add the original file extension (if it exists)
+#     if ext:
+#         new_path += ext
+#
+#     # Add the newly generated path to the dictionary
+#     linux_path_dictionary[path] = new_path
+#
+#     # Return the newly generated path
+#     return new_path
+#
 
 
 win_path_dictionary = {}
@@ -544,23 +576,48 @@ def complete_anonymization(logs):
         line=anonymize_email_line(line)
         line = anonymize_url_line(line)
         line=anonymize_mac_line(line)
-        # line=anonymize_linux_line(line)
+        #line=anonymize_linux_line(line)
         line = anonymize_windows_line(line)
         anon_log += line
     return anon_log
 
 def read_json(logs):
-    metavalues=[]
-
-    #fileData = logs.read()
+    metavalues = ""
     jsonData = json.loads(logs)
-    jsonData=str(jsonData)
-    obj=Elasticsearch()
+    jsonData = str(jsonData)
+    obj = Elasticsearch()
+
     for metakey in obj.IP_KEYS:
         try:
-
-            metavalues.append(jsonData[metakey])
+            metavalues += str(jsonData[metakey])
         except KeyError:
             pass
-    return metavalues
 
+    return metavalues
+# def read_json(logs):
+#     metavalues=[]
+#
+#     #fileData = logs.read()
+#     jsonData = json.loads(logs)
+#     jsonData=str(jsonData)
+#     obj=Elasticsearch()
+#     for metakey in obj.IP_KEYS:
+#         try:
+#
+#             metavalues.append(jsonData[metakey])
+#         except KeyError:
+#             pass
+#     return metavalues
+
+def clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary, name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary, email_dictionary, domains_dictionary):
+    del username_dictionary
+    organizations_dictionary.clear()
+    win_path_dictionary.clear()
+    # linux_path_dictionary.clear()
+    name_dictionary.clear()
+    ip_dictionary.clear()
+    ipv6_dictionary.clear()
+    email_dictionary.clear()
+    mac_dictionary.clear()
+    domains_dictionary.clear()
+    url_dictionary.clear()
