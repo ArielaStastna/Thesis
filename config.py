@@ -10,4 +10,4 @@ API_PORT=5000
 ALLOWED_EXTENSIONS={'log'}
 
 #----- TOKEN -----
-TOKENS=['abc']
+TOKENS=['token']

@@ -68,6 +68,7 @@ def anonymize_ipv4_line(line):
     for ip in matches:
         line=re.sub(ip,anonymize_ip(ip),line)
     print(sys.getsizeof(ip_dictionary))
+    # prolong_data_expiry(ip_dictionary)
     return line
 def regex_ipv6(file):
     anon_log = ""
@@ -271,6 +272,9 @@ def generate_random_private_ip(private_range):
 ip_dictionary={}
 # Function to anonymize an IP address
 def anonymize_ip(ip_address):
+    if ip_address in ip_dictionary:
+        # If the IP address is already in the dictionary, return the corresponding anonymized IP address
+        return ip_dictionary[ip_address]
     # Define private and public IP address ranges
     private_ranges = [
         {"start": "10.0.0.0", "end": "10.255.255.255"},
@@ -308,20 +312,31 @@ def anonymize_ip(ip_address):
                 random_ip_int = random.randint(start, end)
                 anonymized_ip = socket.inet_ntoa(int.to_bytes(random_ip_int, 4, 'big'))
                 break
+    ip_dictionary[ip_address] = anonymized_ip
 
     return anonymized_ip
 
 ipv6_dictionary={}
+
+
 def anonymize_ipv6(ipv6_address):
+    # Check if the IPv6 address has already been anonymized
+    if ipv6_address in ipv6_dictionary:
+        # If yes, return the previously anonymized value
+        return ipv6_dictionary[ipv6_address]
+
     # Split the IPv6 address into its 8 16-bit blocks
     blocks = ipv6_address.split(':')
 
     # Replace one random block with a new random value
     random_index = random.randint(0, 7)
-    blocks[random_index] = '{:04x}'.format(random.randint(0, 2**16-1))
+    blocks[random_index] = '{:04x}'.format(random.randint(0, 2 ** 16 - 1))
 
     # Join the blocks back together into an IPv6 address
     anonymized_ipv6 = ':'.join(blocks)
+
+    # Add the original and anonymized values to the dictionary
+    ipv6_dictionary[ipv6_address] = anonymized_ipv6
 
     return anonymized_ipv6
 # Create Faker instance for generating fake MAC addresses
@@ -621,3 +636,21 @@ def clear_dicts(username_dictionary, organizations_dictionary, win_path_dictiona
     mac_dictionary.clear()
     domains_dictionary.clear()
     url_dictionary.clear()
+
+import time
+
+# Assuming the dictionaries are already defined and populated
+# with data, and the expiry time is stored as the value for
+# the 'expiry' key in each dictionary entry.
+
+# def prolong_data_expiry(dicts):
+#     # Get the current time in seconds since the epoch
+#     current_time = time.time()
+#
+#     # Calculate the expiry time as 2 hours from the current time
+#     expiry_time = current_time + 2 * 60 * 60  # 2 hours in seconds
+#
+#     # Update the expiry time for each entry in each dictionary
+#     for d in dicts:
+#         for key in d:
+#             [key]['expiry'] = expiry_time

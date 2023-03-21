@@ -30,6 +30,7 @@ app.secret_key = 'your_secret_key'
 def json_form():
     return render_template('json.html')
 @app.route('/json', methods=['POST'])
+@auth.login_required
 def handle_json():
     f = request.files['file']
     data = f.read()
@@ -49,6 +50,7 @@ def upload_form():
     return render_template('upload.html')
 
 @app.route('/upload', methods=['POST'])
+
 def upload_file():
     # Get the uploaded file from the request
     file = request.files['file']
@@ -63,25 +65,29 @@ def upload_file():
 # @app.route('/settings')
 # def dictionaries_settings():
 #     return render_template ("settings.html")
+
 @app.route('/settings')
+@auth.verify_token
 def empty_dictionaries():
     clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
     name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary,
     email_dictionary, domains_dictionary)
     print(sys.getsizeof(ip_dictionary))
-    return 'Dictionaries cleared.'
+    return render_template('submit.html')
 
 def allowed_file(filename):
     return "." in filename and \
            filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
 # @auth.verify_token
-def verify_token(token):
-    return token in app.config['TOKENS']
-# @auth.verify_token
 # def verify_token(token):
-#     if token in app.config['TOKENS']:
-#         return True
-#     return False
+#     return token in app.config['TOKENS']
+@auth.verify_token
+def verify_token(token):
+    # token='abc'
+    if token in app.config['TOKENS']:
+        session['logged_in']=True
+        return True
+    return False
 def ip():
     t1_start = perf_counter()
     matches = regex_ipv4('files/waf.log') # calling function with the regex;
@@ -93,17 +99,17 @@ def ip():
 @app.route('/')
 def index():
     return render_template('login.html')
-@app.route('/protected')
-@auth.login_required
-def protected():
-    return 'This page is protected'
+# @app.route('/protected')
+# @auth.login_required
+# def protected():
+#     return 'This page is protected'
 
 @app.route('/login', methods=['POST'])
 def login():
     token = request.form['token']
     if token in app.config['TOKENS']:
         session['token'] = token
-        return redirect(url_for('protected'))
+        return redirect(url_for('upload_form'))
     else:
         return 'Invalid token'
 # @app.route('/')
@@ -112,70 +118,70 @@ def login():
 # @auth.login_required
 # def index1():
 #     return "Hello, {}!".format(auth.current_user())
-@app.route('/ipv4')
-def ipv4():
-    # matches = ip()
-    # anonymized = []
-    #
-    # for addr in matches:
-    #         ipaddr = str(ipaddress.ip_address(addr))
-    #         anonymized.append(str(anonymize_ip(ipaddr)))
-    return regex_ipv4('files/waf.log')
-
-
-@app.route('/ipv6')
-def ipv6():
-    return regex_ipv6('files/linux.log')
-@app.route('/mail')
-def mail():
-    matches=email()
-    anonymized=[]
-    for address in matches:
-        emailadd=address
-        anonymized.append(anonymize_email(emailadd))
-    return anonymized
-
-def email():
-    t1_start = perf_counter()
-    matches = regex_email("singlelog.log")
-    print_original(matches)
-    t2_end = perf_counter()
-    print(t1_start)
-    print(t2_end)
-    return matches
-@app.route('/mac_addr')
-def mac_addr():
-    matches=mac_address()
-    anonymized=[]
-    for address in matches:
-        macadd=address
-        anonymized.append(anonymize_mac(macadd))
-    return anonymized
-
-def mac_address():
-    t1_start = perf_counter()
-    matches = regex_mac("files/fortinet.log")
-    print_original(matches)
-    t2_end = perf_counter()
-    print(t1_start)
-    print(t2_end)
-    return matches
-
-
-@app.route('/linux-directory')
-def linux_directory():
-    matches = regex_linux_directory("files/linux.log")
-    print_original(matches)
-    return matches
-@app.route('/windows-directory')
-def windows_directory():
-    t1_start = perf_counter()
-    matches = regex_windows_directory("files/windows.log")
-    print_original(matches)
-    t2_end = perf_counter()
-    print(t1_start)
-    print(t2_end)
-    return matches
+# @app.route('/ipv4')
+# def ipv4():
+#     # matches = ip()
+#     # anonymized = []
+#     #
+#     # for addr in matches:
+#     #         ipaddr = str(ipaddress.ip_address(addr))
+#     #         anonymized.append(str(anonymize_ip(ipaddr)))
+#     return regex_ipv4('files/waf.log')
+#
+#
+# @app.route('/ipv6')
+# def ipv6():
+#     return regex_ipv6('files/linux.log')
+# @app.route('/mail')
+# def mail():
+#     matches=email()
+#     anonymized=[]
+#     for address in matches:
+#         emailadd=address
+#         anonymized.append(anonymize_email(emailadd))
+#     return anonymized
+#
+# def email():
+#     t1_start = perf_counter()
+#     matches = regex_email("singlelog.log")
+#     print_original(matches)
+#     t2_end = perf_counter()
+#     print(t1_start)
+#     print(t2_end)
+#     return matches
+# @app.route('/mac_addr')
+# def mac_addr():
+#     matches=mac_address()
+#     anonymized=[]
+#     for address in matches:
+#         macadd=address
+#         anonymized.append(anonymize_mac(macadd))
+#     return anonymized
+#
+# def mac_address():
+#     t1_start = perf_counter()
+#     matches = regex_mac("files/fortinet.log")
+#     print_original(matches)
+#     t2_end = perf_counter()
+#     print(t1_start)
+#     print(t2_end)
+#     return matches
+#
+#
+# @app.route('/linux-directory')
+# def linux_directory():
+#     matches = regex_linux_directory("files/linux.log")
+#     print_original(matches)
+#     return matches
+# @app.route('/windows-directory')
+# def windows_directory():
+#     t1_start = perf_counter()
+#     matches = regex_windows_directory("files/windows.log")
+#     print_original(matches)
+#     t2_end = perf_counter()
+#     print(t1_start)
+#     print(t2_end)
+    # return matches
 # @app.route('/findall')
 # def findall():
 #     windows_directory()
