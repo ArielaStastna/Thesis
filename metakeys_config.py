@@ -4,7 +4,7 @@ class Elasticsearch:
     DOMAIN_KEYS=["client.domain", "client.registrated_domain", "destination.domain", "destination.registrated_domain", "server.domain", "source.domain", "source.registrated_domain", "url.domain", "user.domain"]
     DIRECTORY_KEYS=["file.directory", "file.path"]
     MAC_KEYS = ["observer.mac", "client.mac", "host.mac", "destination.mac", "server.mac", "source.mac"]
-    USERNAME_KEYS=["agent.name", "user.name", "host.name"]
+    USERNAME_KEYS=["user.name", "host.name"]
     FULLNAME_KEYS=["user.full_name"]
     URL_KEYS=["url.full", "url.original"]
 

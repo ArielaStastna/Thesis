@@ -66,7 +66,10 @@ def anonymize_ipv4_line(line):
         elif (int(tmp[3]) > 255):
             matches.remove(ip)
     for ip in matches:
-        line=re.sub(ip,anonymize_ip(ip),line)
+        try:
+            line = re.sub(ip, anonymize_ip(ip), line)
+        except UnboundLocalError:
+            continue
     print(sys.getsizeof(ip_dictionary))
     # prolong_data_expiry(ip_dictionary)
     return line
@@ -98,6 +101,35 @@ def anonymize_ipv6_line(line):
 
     for ipv6_address in matches:
          line = re.sub(ipv6_address, anonymize_ipv6(ipv6_address), line)
+    return line
+
+def regex_linklocal(file):
+    anon_log = ""
+    df = pd.read_table(file)
+    ip_pattern = re.compile(r'"(fe80:[0-9a-fA-F:]+)"')
+    with open(file, 'r', encoding="utf-8") as rf:
+        content = rf.readlines()
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+            matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
+
+            for ipv6_address in matches:
+                 line = re.sub(ipv6_address, anonymize_ipv6(ipv6_address), line)
+            anon_log += line
+    new_file = open('a.log', 'w')
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_linklocal_line(line):
+    ip_pattern = re.compile(r'"(fe80:[0-9a-fA-F:]+)"')
+    matches = ip_pattern.findall(line)  # find all matches meeting the regex condition
+
+    for ipv6_address in matches:
+         line = re.sub(ipv6_address, anonymize_link_local_ipv6(ipv6_address), line)
     return line
 def regex_email(file):
     anon_log = ""
@@ -340,6 +372,40 @@ def anonymize_ipv6(ipv6_address):
 
     return anonymized_ipv6
 # Create Faker instance for generating fake MAC addresses
+# Create a dictionary to store the anonymized interface IDs
+anonymized_linklocal = {}
+
+def anonymize_link_local_ipv6(ipv6_address):
+    if not ipv6_address.startswith("fe80::"):
+        return ipv6_address
+
+    # Extract the interface identifier part of the IPv6 address
+    interface_id = ipv6_address.split("::")[1]
+
+    # Split the interface identifier into 2-byte chunks
+    interface_id_chunks = [interface_id[i:i + 4] for i in range(0, len(interface_id), 4)]
+
+    # Loop through each interface identifier chunk
+    for i in range(len(interface_id_chunks)):
+        chunk = interface_id_chunks[i]
+
+        # Check if the current chunk has already been anonymized
+        if chunk in anonymized_linklocal:
+            # If yes, use the same anonymized value
+            anonymized_chunk = anonymized_linklocal[chunk]
+        else:
+            # If no, generate a new anonymized value
+            anonymized_chunk = "".join([random.choice("0123456789abcdef") for _ in range(4)])
+            anonymized_linklocal[chunk] = anonymized_chunk
+
+        # Replace the original chunk with the anonymized value
+        interface_id_chunks[i] = anonymized_chunk
+
+    # Join the anonymized interface identifier chunks and reconstruct the full IPv6 address
+    anonymized_interface_id = ":".join(interface_id_chunks)
+    anonymized_ipv6_address = "fe80::" + anonymized_interface_id
+
+    return anonymized_ipv6_address
 fake = Faker()
 
 # Dictionary to keep track of previously anonymized MAC addresses
@@ -587,6 +653,7 @@ def complete_anonymization(logs):
         line=str(line)
         line=anonymize_ipv4_line(line)
         line=anonymize_ipv6_line(line)
+        line = anonymize_linklocal_line(line)
         line = anonymize_domain_line(line)
         line=anonymize_email_line(line)
         line = anonymize_url_line(line)
@@ -609,6 +676,7 @@ def read_json(logs):
             pass
 
     return metavalues
+
 # def read_json(logs):
 #     metavalues=[]
 #

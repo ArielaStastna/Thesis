@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import psycopg2
 from pip._internal.network import auth
 from flask_httpauth import HTTPTokenAuth
+from werkzeug.utils import secure_filename
+
 from functions import*
 from time import perf_counter
 import json
@@ -13,8 +15,8 @@ app = Flask(__name__)
 
 
 app.config.from_pyfile('config.py')
-auth = HTTPTokenAuth(scheme='Bearer')
-app.secret_key = 'your_secret_key'
+# auth = HTTPTokenAuth(scheme='Bearer')
+# app.secret_key = 'your_secret_key'
 # def db_connection():#connection to DB using psycopg2 library
 #     conn = psycopg2.connect(database="thesis",
 #                             host="localhost",
@@ -29,8 +31,12 @@ app.secret_key = 'your_secret_key'
 @app.route('/json')
 def json_form():
     return render_template('json.html')
+@app.route('/acceptjson', methods=['POST'])
+def accept_json():
+    data=request.json
+    #zavolat funkciu co spracovava json (data)
 @app.route('/json', methods=['POST'])
-@auth.login_required
+# @auth.login_required
 def handle_json():
     f = request.files['file']
     data = f.read()
@@ -41,11 +47,22 @@ def handle_json():
 # def json():
 #     logs=request.json
 #     return logs
-@app.route('/tmp')
+def allowed_file(filename):
+    return "." in filename and \
+           filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+@app.route('/tmp', methods=['GET', 'POST'])
 def tmp_form():
-    return render_template('tmp.html')
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            return 'File uploaded successfully'
+        else:
+            return 'Invalid file type'
+    else:
+        return render_template('tm.html')
 
-@app.route('/upload')
+@app.route('/')
 def upload_form():
     return render_template('upload.html')
 
@@ -56,7 +73,7 @@ def upload_file():
     file = request.files['file']
 
     # Save the file to disk
-    #file.save('C:\\Users\\Asus\\Desktop\\zadania\\datasets\\an.log')
+    #file.save('C:\\Users\\Asus\\Desktop\\zadania\\datasets\\example.json')
 
     # Return a response to the client
     return complete_anonymization(file)
@@ -67,7 +84,7 @@ def upload_file():
 #     return render_template ("settings.html")
 
 @app.route('/settings')
-@auth.verify_token
+# @auth.verify_token
 def empty_dictionaries():
     clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
     name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary,
@@ -75,43 +92,41 @@ def empty_dictionaries():
     print(sys.getsizeof(ip_dictionary))
     return render_template('submit.html')
 
-def allowed_file(filename):
-    return "." in filename and \
-           filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+
 # @auth.verify_token
 # def verify_token(token):
 #     return token in app.config['TOKENS']
-@auth.verify_token
-def verify_token(token):
-    # token='abc'
-    if token in app.config['TOKENS']:
-        session['logged_in']=True
-        return True
-    return False
-def ip():
-    t1_start = perf_counter()
-    matches = regex_ipv4('files/waf.log') # calling function with the regex;
-    print_original(matches)#calling function for printing matches into console
-    t2_end = perf_counter()#function used for performance testing
-    print(t1_start)
-    print(t2_end)
-    return matches
-@app.route('/')
-def index():
-    return render_template('login.html')
+# @auth.verify_token
+# def verify_token(token):
+#     # token='abc'
+#     if token in app.config['TOKENS']:
+#         session['logged_in']=True
+#         return True
+#     return False
+# def ip():
+#     t1_start = perf_counter()
+#     matches = regex_ipv4('files/waf.log') # calling function with the regex;
+#     print_original(matches)#calling function for printing matches into console
+#     t2_end = perf_counter()#function used for performance testing
+#     print(t1_start)
+#     print(t2_end)
+#     return matches
+# @app.route('/')
+# def index():
+#     return render_template('login.html')
 # @app.route('/protected')
 # @auth.login_required
 # def protected():
 #     return 'This page is protected'
 
-@app.route('/login', methods=['POST'])
-def login():
-    token = request.form['token']
-    if token in app.config['TOKENS']:
-        session['token'] = token
-        return redirect(url_for('upload_form'))
-    else:
-        return 'Invalid token'
+# @app.route('/login', methods=['POST'])
+# def login():
+#     token = request.form['token']
+#     if token in app.config['TOKENS']:
+#         session['token'] = token
+#         return redirect(url_for('upload_form'))
+#     else:
+#         return 'Invalid token'
 # @app.route('/')
 # # def index():
 # #     return render_template("index.html")
