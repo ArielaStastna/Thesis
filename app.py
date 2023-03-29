@@ -47,9 +47,11 @@ def handle_json():
 # def json():
 #     logs=request.json
 #     return logs
+
+
 def allowed_file(filename):
-    return "." in filename and \
-           filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
 @app.route('/tmp', methods=['GET', 'POST'])
 def tmp_form():
     if request.method == 'POST':
@@ -59,8 +61,7 @@ def tmp_form():
             return 'File uploaded successfully'
         else:
             return 'Invalid file type'
-    else:
-        return render_template('tm.html')
+    return render_template('tm.html')
 
 @app.route('/')
 def upload_form():
@@ -70,21 +71,16 @@ def upload_form():
 
 def upload_file():
     # Get the uploaded file from the request
-    file = request.files['file']
 
+    file = request.files['file']
+    function = complete_anonymization(file)
     # Save the file to disk
     #file.save('C:\\Users\\Asus\\Desktop\\zadania\\datasets\\example.json')
+    checkbox_state=request.form.get('checkbox')
+    if checkbox_state=='checked':
+        empty_dictionaries()
+    return function
 
-    # Return a response to the client
-    return complete_anonymization(file)
-
-
-# @app.route('/settings')
-# def dictionaries_settings():
-#     return render_template ("settings.html")
-
-@app.route('/settings')
-# @auth.verify_token
 def empty_dictionaries():
     clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
     name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary,

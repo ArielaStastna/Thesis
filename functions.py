@@ -287,6 +287,57 @@ def anonymize_windows_line(line):
     for path in matches:
         line = re.sub(path, anonymize_windows_path(path), line)
     return line
+
+def regex_hostname(file):
+    anon_log = ""
+    df = pd.read_table(file)
+    win_pattern = re.compile(
+        r"[a-zA-Z]:\\((?:.*?\\)*).[^\s]*")
+    with open(file, 'r', encoding="utf-8") as rf:
+        while True:
+
+            line = rf.readline()
+            if not line:
+                break
+            matches = win_pattern.findall(line)
+            for path in matches:
+                line = re.sub(path, anonymize_windows_path(path), line)
+            anon_log += line
+    new_file = open('a.log', 'w', encoding="utf-8")
+    new_file.write(anon_log)
+    new_file.close()
+    return anon_log
+
+def anonymize_hostname_line(line):
+    host_pattern = re.compile('"hostname"\\s*:\\s*"([^"]+)')
+    matches = host_pattern.findall(line)
+    for host in matches:
+        line = re.sub(host, anonymize_username(host), line)
+    return line
+def anonymize_username_line(line):
+    user_pattern = re.compile('"TargetUserName"\\s*:\\s*"([^"]+)')
+    matches = user_pattern.findall(line)
+    for user in matches:
+        line = re.sub(user, anonymize_username(user), line)
+    return line
+def anonymize_target_line(line):
+    domain_pattern = re.compile('"TargetDomainName"\\s*:\\s*"([^"]+)')
+    matches =domain_pattern.findall(line)
+    for domain in matches:
+        line = re.sub(domain, anonymize_username(domain), line)
+    return line
+def anonymize_account_line(line):
+    account_pattern = re.compile('"Account Name"\\s*:\\s*"([^"]+)')
+    matches = account_pattern.findall(line)
+    for account in matches:
+        line = re.sub(account, anonymize_username(account), line)
+    return line
+def anonymize_us_line(line):
+    username_pattern = re.compile('"user.name"\\s*:\\s*"([^"]+)')
+    matches = username_pattern.findall(line)
+    for user in matches:
+        line = re.sub(user, anonymize_username(user), line)
+    return line
 # Function to generate a random private IP address
 def generate_random_private_ip(private_range):
     # convert IP range strings to integers
@@ -658,6 +709,11 @@ def complete_anonymization(logs):
         line=anonymize_email_line(line)
         line = anonymize_url_line(line)
         line=anonymize_mac_line(line)
+        line= anonymize_hostname_line(line)
+        line=anonymize_username_line(line)
+        line=anonymize_account_line(line)
+        line=anonymize_target_line(line)
+        line=anonymize_us_line(line)
         #line=anonymize_linux_line(line)
         line = anonymize_windows_line(line)
         anon_log += line
