@@ -1,13 +1,11 @@
 import json
 import sys
-
 import pandas as pd
 import re
 import socket
 import random
 import randominfo
 from faker import Faker
-import string
 from urllib.parse import urlparse
 import os
 
@@ -66,12 +64,11 @@ def anonymize_ipv4_line(line):
         elif (int(tmp[3]) > 255):
             matches.remove(ip)
     for ip in matches:
-        try:
+         try:
             line = re.sub(ip, anonymize_ip(ip), line)
-        except UnboundLocalError:
-            continue
+         except UnboundLocalError:
+             continue
     print(sys.getsizeof(ip_dictionary))
-    # prolong_data_expiry(ip_dictionary)
     return line
 def regex_ipv6(file):
     anon_log = ""
@@ -693,6 +690,27 @@ def anonymize_organization(org_name):
         # Return the anonymized company name
         return fake_org_name
 
+def complete_anonymization_json(json_data):
+    anon_log = ""
+
+    for line in json_data['logs']:
+        line = str(line)
+        line = anonymize_ipv4_line(line)
+        line = anonymize_ipv6_line(line)
+        line = anonymize_linklocal_line(line)
+        line = anonymize_domain_line(line)
+        line = anonymize_email_line(line)
+        line = anonymize_url_line(line)
+        line = anonymize_mac_line(line)
+        line = anonymize_hostname_line(line)
+        line = anonymize_username_line(line)
+        line = anonymize_account_line(line)
+        line = anonymize_target_line(line)
+        line = anonymize_us_line(line)
+        line = anonymize_windows_line(line)
+        anon_log += line
+
+    return anon_log
 def complete_anonymization(logs):
     anon_log=""
 
@@ -701,7 +719,8 @@ def complete_anonymization(logs):
         line = logs.readline()
         if not line:
             break
-        line=str(line)
+        line=str(line.decode("utf-8"))
+        # .replace('\b', '').replace('\\r', '').replace('\\n', '').replace('\\t', '')
         line=anonymize_ipv4_line(line)
         line=anonymize_ipv6_line(line)
         line = anonymize_linklocal_line(line)
@@ -761,20 +780,5 @@ def clear_dicts(username_dictionary, organizations_dictionary, win_path_dictiona
     domains_dictionary.clear()
     url_dictionary.clear()
 
-import time
 
-# Assuming the dictionaries are already defined and populated
-# with data, and the expiry time is stored as the value for
-# the 'expiry' key in each dictionary entry.
 
-# def prolong_data_expiry(dicts):
-#     # Get the current time in seconds since the epoch
-#     current_time = time.time()
-#
-#     # Calculate the expiry time as 2 hours from the current time
-#     expiry_time = current_time + 2 * 60 * 60  # 2 hours in seconds
-#
-#     # Update the expiry time for each entry in each dictionary
-#     for d in dicts:
-#         for key in d:
-#             [key]['expiry'] = expiry_time

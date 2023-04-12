@@ -1,33 +1,74 @@
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 import psycopg2
 from pip._internal.network import auth
 from flask_httpauth import HTTPTokenAuth
 from werkzeug.utils import secure_filename
 
+import config
 from functions import*
 from time import perf_counter
 import json
 import ipaddress
 from config import*
 from werkzeug.security import generate_password_hash, check_password_hash
-app = Flask(__name__)
 
+app = Flask(__name__)
+UPLOAD_FOLDER = os.path.abspath("uploads")
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 app.config.from_pyfile('config.py')
-# auth = HTTPTokenAuth(scheme='Bearer')
-# app.secret_key = 'your_secret_key'
-# def db_connection():#connection to DB using psycopg2 library
-#     conn = psycopg2.connect(database="thesis",
-#                             host="localhost",
-#                             user="xyz",#zmenit
-#                             password="xyz",
-#                             port=5432
-#                             )
-    # return conn
-# @app.route('/anon')
-# def anon():
-#     return complete_anonymization("singlelog.log")
+
+@app.route('/singlecategory')
+def home():
+    return render_template('singlecat.html')
+
+@app.route('/singlecategory/anonymize', methods=['POST'])
+def anonymize():
+    file = request.files['file']  # Get the uploaded file from the form
+    if file.filename.endswith(('.json', '.log')):  # Check if file has .json or .log extension
+        content = file.read().decode('utf-8')
+        anon_content = ''
+        for line in content.splitlines():
+            if config.EMAIL:  # Check if EMAIL configuration variable is True
+                anon_line = anonymize_email_line(line)
+            elif config.IPV4:  # Check if IP configuration variable is True
+                anon_line = anonymize_ipv4_line(line)
+            elif config.IPV6:
+                anon_line = anonymize_ipv6_line(line)
+            elif config.LINKLOCAL:
+                anon_line = anonymize_link_local_ipv6(line)
+            elif config.DOMAIN:
+                anon_line = anonymize_domain_line(line)
+            elif config.MAC:
+                anon_line = anonymize_mac_line(line)
+            elif config.URL:
+                anon_line = anonymize_url_line(line)
+            elif config.WINDOWS_DIR:
+                anon_line = anonymize_windows_line(line)
+            elif config.HOSTNAME:
+                anon_line = anonymize_hostname_line(line)
+            elif config.USERNAME:
+                anon_line = anonymize_username_line(line)
+
+            else:
+                anon_line = line
+            anon_content += anon_line + '\n'
+
+        # Save anonymized content to a file in "uploads" directory
+        output_filename = 'anonymized_output.log' if file.filename.endswith('.log') else 'anonymized_output.json'
+        output_path = os.path.join('uploads', output_filename)
+        with open(output_path, 'w') as output_file:
+            output_file.write(anon_content)
+
+        return f'<pre>{anon_content}</pre>'
+    else:
+        return 'Invalid file format. Please upload a .json or .log file.'
+
 @app.route('/json')
 def json_form():
     return render_template('json.html')
@@ -35,13 +76,13 @@ def json_form():
 def accept_json():
     data=request.json
     #zavolat funkciu co spracovava json (data)
-@app.route('/json', methods=['POST'])
-# @auth.login_required
-def handle_json():
-    f = request.files['file']
-    data = f.read()
-    json_data = json.loads(data)
-    return json_data
+# @app.route('/json', methods=['POST'])
+# # @auth.login_required
+# def handle_json():
+#     f = request.files['file']
+#     data = f.read()
+#     json_data = json.loads(data)
+#     return complete_anonymization(json_data)
 
 # @app.route('/json', methods=['POST'])
 # def json():
@@ -49,37 +90,58 @@ def handle_json():
 #     return logs
 
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
-@app.route('/tmp', methods=['GET', 'POST'])
-def tmp_form():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            return 'File uploaded successfully'
-        else:
-            return 'Invalid file type'
-    return render_template('tm.html')
+# def allowed_file(filename):
+#     return '.' in filename and \
+#            filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+# @app.route('/tmp', methods=['GET', 'POST'])
+# def tmp_form():
+#     if request.method == 'POST':
+#         file = request.files['file']
+#         if file and allowed_file(file.filename):
+#             filename = secure_filename(file.filename)
+#             return 'File uploaded successfully'
+#         else:
+#             return 'Invalid file type'
+#     return render_template('tm.html')
 
 @app.route('/')
 def upload_form():
     return render_template('upload.html')
 
 @app.route('/upload', methods=['POST'])
-
 def upload_file():
     # Get the uploaded file from the request
-
     file = request.files['file']
+
+    # Get the file extension
+    file_extension = os.path.splitext(file.filename)[1]
+
+    # Check the file extension and set the output file extension
+    if file_extension == '.json':
+        output_extension = '.json'
+    elif file_extension == '.log':
+        output_extension = '.log'
+    else:
+        # Return an error message if the file extension is not supported
+        return 'Error: Unsupported file type.'
+
+    # Perform anonymization and get the output
     function = complete_anonymization(file)
-    # Save the file to disk
-    #file.save('C:\\Users\\Asus\\Desktop\\zadania\\datasets\\example.json')
-    checkbox_state=request.form.get('checkbox')
-    if checkbox_state=='checked':
+
+    # Set the output file name and path
+    output_filename = os.path.splitext(file.filename)[0] + '_anonymized' + output_extension
+    output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+
+    # Save the output to disk
+    with open(output_path, 'w') as f:
+        f.write(function)
+
+    # Clear the global dictionaries if the checkbox is checked
+    checkbox_state = request.form.get('checkbox')
+    if checkbox_state == 'checked':
         empty_dictionaries()
-    return function
+
+    return '<pre>' + function + '</pre>'
 
 def empty_dictionaries():
     clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
@@ -179,82 +241,6 @@ def empty_dictionaries():
 #     return matches
 #
 #
-# @app.route('/linux-directory')
-# def linux_directory():
-#     matches = regex_linux_directory("files/linux.log")
-#     print_original(matches)
-#     return matches
-# @app.route('/windows-directory')
-# def windows_directory():
-#     t1_start = perf_counter()
-#     matches = regex_windows_directory("files/windows.log")
-#     print_original(matches)
-#     t2_end = perf_counter()
-#     print(t1_start)
-#     print(t2_end)
-    # return matches
-# @app.route('/findall')
-# def findall():
-#     windows_directory()
-#     mac_address()
-#     email()
-#     ip()
-#     return "Check your console."
-# @app.route('/ipdb')#function for filling the database
-# def ipdb():
-#         matches = ip()
-#         conn = db_connection()
-#         cur = conn.cursor()
-#         for singleIP in matches: #every single match is stored in database
-#             cur.execute("INSERT INTO anon_ip (original, id_category) VALUES (%s, 1)", [singleIP])#the id_category refers to the category of sensitive data
-#         conn.commit()
-#         cur.close()
-#         conn.close()
-#         return "IP address values successfully added to the database!"
-# @app.route('/emaildb')
-# def emaildb():
-#     matches = email()
-#     conn = db_connection()
-#     cur = conn.cursor()
-#     for single_email in matches:
-#         cur.execute("INSERT INTO anon_email (original, id_category) VALUES (%s, 5)", [single_email])
-#     conn.commit()
-#     cur.close()
-#     conn.close()
-#     return "Email values successfully added to the database!"
-# @app.route('/macdb')
-# def macdb():
-#     matches = mac_address()
-#     conn = db_connection()
-#     cur = conn.cursor()
-#     for singleMAC in matches:
-#         cur.execute("INSERT INTO anon_mac (original, id_category) VALUES (%s, 2)", [singleMAC])
-#     conn.commit()
-#     cur.close()
-#     conn.close()
-#     return "MAC address values successfully added to the database!"
-# @app.route('/directorydb')
-# def directorydb():
-#     matches = windows_directory()
-#     conn = db_connection()
-#     cur = conn.cursor()
-#     for single_directory in matches:
-#         cur.execute("INSERT INTO anon_windows_directory (original, id_category) VALUES (%s, 13)", [single_directory])
-#     conn.commit()
-#     cur.close()
-#     conn.close()
-#     return "Directory values successfully added to the database!"
-# @app.route('/directorylinux')
-# def directory_linux_db():
-#     matches = linux_directory()
-#     conn = db_connection()
-#     cur = conn.cursor()
-#     for single_directory in matches:
-#         cur.execute("INSERT INTO anon_linux_directory (original, id_category) VALUES (%s, 12)", [single_directory])
-#     conn.commit()
-#     cur.close()
-#     conn.close()
-#     return "Directory values successfully added to the database!"
 
 
 if __name__ == '__main__':
