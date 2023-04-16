@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
+      <link rel="icon" href="data:,">
     <title>Anonymization</title>
     <!-- MDB icon -->
     <!-- Font Awesome -->
@@ -38,12 +39,12 @@
               backdrop-filter: blur(30px);
               ">
               <div class="card-body p-5 shadow-5 text-center">
-                <h2 class="fw-bold mb-5">Anonymize log file</h2>
+                <h2 class="fw-bold mb-5">Anonymize JSON log file</h2>
                 <div class="container">
-                  <form action="/json" method="POST" enctype="multipart/form-data">
+                  <form action="/anonymized/json" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                      <label for="fileInput">Select log file:</label>
-                      <input type="file" class="form-control-file" id="fileInput" name="file" accept=".json" />
+                      <label for="fileInput">Select JSON log file:</label>
+                      <input type="file" name="jsonfile" id="fileInput" accept=".json" />
                     </div>
                    <div class="form-check d-flex justify-content-center mb-4">
                 <input class="form-check-input me-2" type="checkbox" value="checked" name="checkbox" id="checkbox"  />
@@ -58,18 +59,23 @@
             </div>
           </div>
           <div class="col-lg-6 mb-5 mb-lg-0 d-flex justify-content-center align-items-center">
+<!--            <img src="/templates/iStock-938261944&#45;&#45;1-.jpg" class="w-100 rounded-4 shadow-4" alt="" />-->
             <img src="https://i.guim.co.uk/img/media/e64aa8c01de828eed4ff6630e6383fa08c2b6a9e/0_300_4131_2479/master/4131.jpg?width=1200&quality=85&auto=format&fit=max&s=6bd85c99c303bcd9fe26d44e787de700" class="w-100 rounded-4 shadow-4" alt="" />
           </div>
         </div>
       </div>
     </section>
 
-    <script>
- $(function() {
-    $('#form2Example33').on('change', function() {
-      if ($(this).is(':checked')) {
-        empty_dictionaries();
-      }
-    });
-  });
-</script>
+<!--<!DOCTYPE html>-->
+<!--<html>-->
+<!--<head>-->
+<!--    <title>JSON File Upload</title>-->
+<!--</head>-->
+<!--<body>-->
+<!--    <h1>Upload JSON File</h1>-->
+<!--    <form action="/jsonread" method="POST" enctype="multipart/form-data">-->
+<!--        <input type="file" name="jsonfile" accept="application/json">-->
+<!--        <input type="submit" value="Upload">-->
+<!--    </form>-->
+<!--</body>-->
+<!--</html>-->

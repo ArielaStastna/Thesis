@@ -8,8 +8,8 @@ import randominfo
 from faker import Faker
 from urllib.parse import urlparse
 import os
+import ipaddress
 
-from metakeys_config import Elasticsearch
 
 
 def print_original(log):
@@ -285,56 +285,6 @@ def anonymize_windows_line(line):
         line = re.sub(path, anonymize_windows_path(path), line)
     return line
 
-def regex_hostname(file):
-    anon_log = ""
-    df = pd.read_table(file)
-    win_pattern = re.compile(
-        r"[a-zA-Z]:\\((?:.*?\\)*).[^\s]*")
-    with open(file, 'r', encoding="utf-8") as rf:
-        while True:
-
-            line = rf.readline()
-            if not line:
-                break
-            matches = win_pattern.findall(line)
-            for path in matches:
-                line = re.sub(path, anonymize_windows_path(path), line)
-            anon_log += line
-    new_file = open('a.log', 'w', encoding="utf-8")
-    new_file.write(anon_log)
-    new_file.close()
-    return anon_log
-
-def anonymize_hostname_line(line):
-    host_pattern = re.compile('"hostname"\\s*:\\s*"([^"]+)')
-    matches = host_pattern.findall(line)
-    for host in matches:
-        line = re.sub(host, anonymize_username(host), line)
-    return line
-def anonymize_username_line(line):
-    user_pattern = re.compile('"TargetUserName"\\s*:\\s*"([^"]+)')
-    matches = user_pattern.findall(line)
-    for user in matches:
-        line = re.sub(user, anonymize_username(user), line)
-    return line
-def anonymize_target_line(line):
-    domain_pattern = re.compile('"TargetDomainName"\\s*:\\s*"([^"]+)')
-    matches =domain_pattern.findall(line)
-    for domain in matches:
-        line = re.sub(domain, anonymize_username(domain), line)
-    return line
-def anonymize_account_line(line):
-    account_pattern = re.compile('"Account Name"\\s*:\\s*"([^"]+)')
-    matches = account_pattern.findall(line)
-    for account in matches:
-        line = re.sub(account, anonymize_username(account), line)
-    return line
-def anonymize_us_line(line):
-    username_pattern = re.compile('"user.name"\\s*:\\s*"([^"]+)')
-    matches = username_pattern.findall(line)
-    for user in matches:
-        line = re.sub(user, anonymize_username(user), line)
-    return line
 # Function to generate a random private IP address
 def generate_random_private_ip(private_range):
     # convert IP range strings to integers
@@ -514,6 +464,7 @@ def anonymize_email(email):
         return anonymized_email
 
 
+
 url_dictionary = {}
 
 
@@ -690,27 +641,6 @@ def anonymize_organization(org_name):
         # Return the anonymized company name
         return fake_org_name
 
-def complete_anonymization_json(json_data):
-    anon_log = ""
-
-    for line in json_data['logs']:
-        line = str(line)
-        line = anonymize_ipv4_line(line)
-        line = anonymize_ipv6_line(line)
-        line = anonymize_linklocal_line(line)
-        line = anonymize_domain_line(line)
-        line = anonymize_email_line(line)
-        line = anonymize_url_line(line)
-        line = anonymize_mac_line(line)
-        line = anonymize_hostname_line(line)
-        line = anonymize_username_line(line)
-        line = anonymize_account_line(line)
-        line = anonymize_target_line(line)
-        line = anonymize_us_line(line)
-        line = anonymize_windows_line(line)
-        anon_log += line
-
-    return anon_log
 def complete_anonymization(logs):
     anon_log=""
 
@@ -728,47 +658,14 @@ def complete_anonymization(logs):
         line=anonymize_email_line(line)
         line = anonymize_url_line(line)
         line=anonymize_mac_line(line)
-        line= anonymize_hostname_line(line)
-        line=anonymize_username_line(line)
-        line=anonymize_account_line(line)
-        line=anonymize_target_line(line)
-        line=anonymize_us_line(line)
         #line=anonymize_linux_line(line)
         line = anonymize_windows_line(line)
         anon_log += line
     return anon_log
 
-def read_json(logs):
-    metavalues = ""
-    jsonData = json.loads(logs)
-    jsonData = str(jsonData)
-    obj = Elasticsearch()
-
-    for metakey in obj.IP_KEYS:
-        try:
-            metavalues += str(jsonData[metakey])
-        except KeyError:
-            pass
-
-    return metavalues
-
-# def read_json(logs):
-#     metavalues=[]
-#
-#     #fileData = logs.read()
-#     jsonData = json.loads(logs)
-#     jsonData=str(jsonData)
-#     obj=Elasticsearch()
-#     for metakey in obj.IP_KEYS:
-#         try:
-#
-#             metavalues.append(jsonData[metakey])
-#         except KeyError:
-#             pass
-#     return metavalues
 
 def clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary, name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary, email_dictionary, domains_dictionary):
-    del username_dictionary
+    username_dictionary.clear()
     organizations_dictionary.clear()
     win_path_dictionary.clear()
     # linux_path_dictionary.clear()
@@ -780,5 +677,120 @@ def clear_dicts(username_dictionary, organizations_dictionary, win_path_dictiona
     domains_dictionary.clear()
     url_dictionary.clear()
 
+def create_nested_key_structure(keys):
+    nested_structure = {}  # Initialize an empty dictionary for the nested structure
+    for key in keys:  # Loop through each key in the input list of keys
+        parts = key.split(".")  # Split the key by "." to separate its parts
+        current_level = nested_structure  # Set the current level of the nested structure to the top level
+        for part in parts:  # Loop through each part of the key
+            if part not in current_level:  # If the part is not already a key in the current level
+                current_level[part] = {}  # Create a new nested dictionary for the part
+            current_level = current_level[part]  # Update the current level to the nested dictionary for the part
+    return nested_structure  # Return the completed nested structure
 
+def process_nested_keys(data, keys, anonymization_function, elasticsearch):
+    # If there is only one key remaining in the keys list
+    if len(keys) == 1:
+        # Check if the key exists in the data dictionary
+        if keys[0] in data:
+            # If the key is in the list of IP_KEYS in the elasticsearch object
+            if keys[0] in elasticsearch.IP_KEYS:
+                # If the value associated with the key is a list, apply the handle_ip_addresses function to each item in the list
+                if isinstance(data[keys[0]], list):
+                    data[keys[0]] = [handle_ip_addresses(item, elasticsearch) for item in data[keys[0]]]
+                # If the value is not a list, apply the handle_ip_addresses function to the value
+                else:
+                    data[keys[0]] = handle_ip_addresses(data[keys[0]], elasticsearch)
+            # If the key is not in the list of IP_KEYS
+            else:
+                # If the value associated with the key is a list, apply the anonymization_function to each item in the list
+                if isinstance(data[keys[0]], list):
+                    data[keys[0]] = [anonymization_function(item) for item in data[keys[0]]]
+                # If the value is not a list, apply the anonymization_function to the value
+                else:
+                    data[keys[0]] = anonymization_function(data[keys[0]])
+    # If there are still multiple keys remaining in the keys list
+    else:
+        key = keys[0]
+        # Check if the key exists in the data dictionary
+        if key in data:
+            # Recursively call the process_nested_keys function on the value associated with the key
+            # with the remaining keys in the keys list, anonymization_function, and elasticsearch as arguments
+            process_nested_keys(data[key], keys[1:], anonymization_function, elasticsearch)
 
+def handle_ip_addresses(ip, elasticsearch):
+    try:
+        # Try to create an ipaddress.ip_address object from the given IP
+        ip_obj = ipaddress.ip_address(ip)
+        # If the IP is IPv4
+        if ip_obj.version == 4:
+            # Return the result of applying the IPv4 anonymization function from the elasticsearch object on the IP
+            return elasticsearch.ip_anonymization_mapping["ipv4"](ip)
+        # If the IP is IPv6
+        elif ip_obj.version == 6:
+            # If the IPv6 IP is a link-local address
+            if ip_obj.is_link_local:
+                # Return the result of applying the link-local IPv6 anonymization function from the elasticsearch object on the IP
+                return elasticsearch.ip_anonymization_mapping["ipv6_local"](ip)
+            # If the IPv6 IP is not a link-local address
+            else:
+                # Return the result of applying the regular IPv6 anonymization function from the elasticsearch object on the IP
+                return elasticsearch.ip_anonymization_mapping["ipv6"](ip)
+        # If the given IP is not a valid IP address
+    except ValueError:
+        # Ignore the error and continue
+        pass
+        # Return the original IP if it was not successfully anonymized
+    return ip
+
+def anonymize_keys(data, key_anonymization_mapping, elasticsearch):
+    if isinstance(data, dict):
+        # Iterate over each key and its corresponding anonymization function in the key_anonymization_mapping
+        for key, anonymization_function in key_anonymization_mapping.items():
+            # Split the key by '.' to handle nested keys
+            keys = key.split('.')
+            # Call the process_nested_keys function to process the nested keys and apply the anonymization function
+            process_nested_keys(data, keys, anonymization_function, elasticsearch)
+        # Recursively call the anonymize_keys function on each value in the dictionary that is a dictionary or list
+        for value in data.values():
+            if isinstance(value, (dict, list)):
+                anonymize_keys(value, key_anonymization_mapping, elasticsearch)
+    elif isinstance(data, list):
+        # Recursively call the anonymize_keys function on each item in the list
+        for item in data:
+            anonymize_keys(item, key_anonymization_mapping, elasticsearch)
+        # Return the modified data after applying anonymization
+    return data
+
+def anonymize_data(data, elasticsearch):
+    return anonymize_keys(data, elasticsearch.key_anonymization_mapping, elasticsearch)
+class Elasticsearch:
+    EMAIL_KEYS = (
+    "email.bcc.address", "email.cc.address", "email.from.address", "email.reply_to.address", "email.sender.address",
+    "email.to.address", "threat.enrichments.indicator.email.address", "threat.indicator.email.address", "user.email")
+    IP_KEYS = ("client.ip", "client.nat.ip", "destination.ip", "destination.nat.ip", "host.ip", "observer.ip",
+               "related.ip", "server.ip", "server.nat.ip", "source.ip", "source.nat.ip",
+               "threat.enrichments.indicator.ip", "threat.indicator.ip", 'ip')
+    DOMAIN_KEYS = ["TargetDomainName", "client.domain", "client.registrated_domain", "destination.domain", "destination.registrated_domain",
+                   "server.domain", "source.domain", "source.registrated_domain", "url.domain", "user.domain", 'computer_name']
+    DIRECTORY_KEYS = ["file.directory", "file.path"]
+    MAC_KEYS = ("observer.mac", "client.mac", "host.mac", "destination.mac", "server.mac", "source.mac")
+    USERNAME_KEYS = ["user.name", "host.name", "TargetUserName", 'host.hostname', 'AccountName']
+    FULLNAME_KEYS = ["user.full_name"]
+    URL_KEYS = ["url.full", "url.original"]
+
+    key_anonymization_mapping = { # Create a dictionary that maps keys to anonymization functions
+        **{key: anonymize_email for key in EMAIL_KEYS},
+        **{key: anonymize_mac for key in MAC_KEYS},
+        **{key: anonymize_domain for key in DOMAIN_KEYS},
+        **{key: anonymize_ip for key in IP_KEYS},
+        **{key: anonymize_username for key in USERNAME_KEYS},
+        **{key: anonymize_url for key in URL_KEYS},
+        **{key: anonymize_windows_path for key in DIRECTORY_KEYS},
+        **{key: anonymize_name for key in FULLNAME_KEYS}
+    }
+    ip_anonymization_mapping = { # Create a dictionary that maps IP versions to their corresponding anonymization functions
+        "ipv4": anonymize_ip,
+        "ipv6": anonymize_ipv6,
+        "ipv6_local": anonymize_link_local_ipv6
+    }

@@ -1,8 +1,5 @@
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
-import psycopg2
-from pip._internal.network import auth
-from flask_httpauth import HTTPTokenAuth
 from werkzeug.utils import secure_filename
 
 import config
@@ -11,7 +8,7 @@ from time import perf_counter
 import json
 import ipaddress
 from config import*
-from werkzeug.security import generate_password_hash, check_password_hash
+
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.abspath("uploads")
@@ -50,10 +47,6 @@ def anonymize():
                 anon_line = anonymize_url_line(line)
             elif config.WINDOWS_DIR:
                 anon_line = anonymize_windows_line(line)
-            elif config.HOSTNAME:
-                anon_line = anonymize_hostname_line(line)
-            elif config.USERNAME:
-                anon_line = anonymize_username_line(line)
 
             else:
                 anon_line = line
@@ -62,33 +55,15 @@ def anonymize():
         # Save anonymized content to a file in "uploads" directory
         output_filename = 'anonymized_output.log' if file.filename.endswith('.log') else 'anonymized_output.json'
         output_path = os.path.join('uploads', output_filename)
+        checkbox_state = request.form.get('checkbox')
+        if checkbox_state == 'checked':
+            empty_dictionaries()
         with open(output_path, 'w') as output_file:
             output_file.write(anon_content)
 
         return f'<pre>{anon_content}</pre>'
     else:
         return 'Invalid file format. Please upload a .json or .log file.'
-
-@app.route('/json')
-def json_form():
-    return render_template('json.html')
-@app.route('/acceptjson', methods=['POST'])
-def accept_json():
-    data=request.json
-    #zavolat funkciu co spracovava json (data)
-# @app.route('/json', methods=['POST'])
-# # @auth.login_required
-# def handle_json():
-#     f = request.files['file']
-#     data = f.read()
-#     json_data = json.loads(data)
-#     return complete_anonymization(json_data)
-
-# @app.route('/json', methods=['POST'])
-# def json():
-#     logs=request.json
-#     return logs
-
 
 # def allowed_file(filename):
 #     return '.' in filename and \
@@ -102,13 +77,33 @@ def accept_json():
 #             return 'File uploaded successfully'
 #         else:
 #             return 'Invalid file type'
-#     return render_template('tm.html')
+#     return render_template('result.html')
 
 @app.route('/')
 def upload_form():
     return render_template('upload.html')
+@app.route('/upload/json')
+def index():
+    return render_template('json.html')
 
-@app.route('/upload', methods=['POST'])
+@app.route('/anonymized/json', methods=['POST'])
+def json_file():
+    if request.method == 'POST':
+        file = request.files['jsonfile']
+        if file.filename != '':
+            file.save(secure_filename(file.filename))
+            with open(file.filename) as f:
+                data = json.load(f)
+            checkbox_state = request.form.get('checkbox')
+            if checkbox_state == 'checked':
+                empty_dictionaries()
+            elasticsearch = Elasticsearch()
+            anonymized_data = anonymize_data(data, elasticsearch)
+            return render_template('result.html', json_data=json.dumps(anonymized_data, indent=2))
+    return "No file selected."
+
+
+@app.route('/', methods=['POST'])
 def upload_file():
     # Get the uploaded file from the request
     file = request.files['file']
@@ -117,9 +112,7 @@ def upload_file():
     file_extension = os.path.splitext(file.filename)[1]
 
     # Check the file extension and set the output file extension
-    if file_extension == '.json':
-        output_extension = '.json'
-    elif file_extension == '.log':
+    if file_extension == '.log':
         output_extension = '.log'
     else:
         # Return an error message if the file extension is not supported
