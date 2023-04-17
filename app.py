@@ -8,7 +8,7 @@ from time import perf_counter
 import json
 import ipaddress
 from config import*
-
+from jsonschema import Draft7Validator
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.abspath("uploads")
@@ -20,11 +20,11 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 app.config.from_pyfile('config.py')
 
-@app.route('/singlecategory')
+@app.route('/anonymize/singlecategory')
 def home():
     return render_template('singlecat.html')
 
-@app.route('/singlecategory/anonymize', methods=['POST'])
+@app.route('/anonymize/singlecategory', methods=['POST'])
 def anonymize():
     file = request.files['file']  # Get the uploaded file from the form
     if file.filename.endswith(('.json', '.log')):  # Check if file has .json or .log extension
@@ -82,11 +82,11 @@ def anonymize():
 @app.route('/')
 def upload_form():
     return render_template('upload.html')
-@app.route('/upload/json')
+@app.route('/anonymize/json')
 def index():
     return render_template('json.html')
 
-@app.route('/anonymized/json', methods=['POST'])
+@app.route('/anonymize/json', methods=['POST'])
 def json_file():
     if request.method == 'POST':
         file = request.files['jsonfile']

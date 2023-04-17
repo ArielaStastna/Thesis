@@ -10,13 +10,6 @@ class Elasticsearch:
     FULLNAME_KEYS=["user.full_name"]
     URL_KEYS=["url.full", "url.original"]
 
-    key_anonymization_mapping = {
-        "EMAIL_KEYS": anonymize_email,
-        "IP_KEYS": anonymize_ip,
-        "DOMAIN_KEYS": anonymize_domain,
-        # Add more mappings as needed
-    }
-
 class RSANetWitness:
     EMAIL_KEYS = ["email", "email.dst", "email.src"]
     IP4_KEYS = ["alias.ip", "device.ip", "ip.addr", "ip.dst", "ip.src", "tunnel.ip.dst", "tunnel.ip.src", "paddr"]
