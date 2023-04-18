@@ -101,8 +101,12 @@ def json_file():
             anonymized_data = anonymize_data(data, elasticsearch)
             return render_template('result.html', json_data=json.dumps(anonymized_data, indent=2))
     return "No file selected."
-
-
+@app.route('/new', methods=['POST'])
+def new_function():
+    data = request.json
+    elasticsearch = Elasticsearch()
+    anonymized_data = anonymize_data(data, elasticsearch)
+    return anonymized_data
 @app.route('/', methods=['POST'])
 def upload_file():
     # Get the uploaded file from the request
