@@ -1,17 +1,22 @@
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request
 from werkzeug.utils import secure_filename
 
 import config
 from functions import*
-from time import perf_counter
 import json
+from jsonfile import*
+import metakeys_config
+from regex import*
 import ipaddress
 from config import*
-from jsonschema import Draft7Validator
+
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.abspath("uploads")
+configuration = metakeys_config.Elasticsearch
+# configuration = metakeys_config.RSANetWitness
+# configuration = metakeys_config.QRadar
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -38,7 +43,7 @@ def anonymize():
             elif config.IPV6:
                 anon_line = anonymize_ipv6_line(line)
             elif config.LINKLOCAL:
-                anon_line = anonymize_link_local_ipv6(line)
+                anon_line = Functions.anonymize_link_local_ipv6(line)
             elif config.DOMAIN:
                 anon_line = anonymize_domain_line(line)
             elif config.MAC:
@@ -65,20 +70,6 @@ def anonymize():
     else:
         return 'Invalid file format. Please upload a .json or .log file.'
 
-# def allowed_file(filename):
-#     return '.' in filename and \
-#            filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
-# @app.route('/tmp', methods=['GET', 'POST'])
-# def tmp_form():
-#     if request.method == 'POST':
-#         file = request.files['file']
-#         if file and allowed_file(file.filename):
-#             filename = secure_filename(file.filename)
-#             return 'File uploaded successfully'
-#         else:
-#             return 'Invalid file type'
-#     return render_template('result.html')
-
 @app.route('/')
 def upload_form():
     return render_template('upload.html')
@@ -97,16 +88,12 @@ def json_file():
             checkbox_state = request.form.get('checkbox')
             if checkbox_state == 'checked':
                 empty_dictionaries()
-            elasticsearch = Elasticsearch()
-            anonymized_data = anonymize_data(data, elasticsearch)
-            return render_template('result.html', json_data=json.dumps(anonymized_data, indent=2))
+
+            anonymized_data = anonymize_data(data, configuration)
+            # return render_template('result.html', json_data=json.dumps(anonymized_data, indent=2))
+            return anonymized_data
     return "No file selected."
-@app.route('/new', methods=['POST'])
-def new_function():
-    data = request.json
-    elasticsearch = Elasticsearch()
-    anonymized_data = anonymize_data(data, elasticsearch)
-    return anonymized_data
+
 @app.route('/', methods=['POST'])
 def upload_file():
     # Get the uploaded file from the request
@@ -141,103 +128,9 @@ def upload_file():
     return '<pre>' + function + '</pre>'
 
 def empty_dictionaries():
-    clear_dicts(username_dictionary, organizations_dictionary, win_path_dictionary, linux_path_dictionary,
-    name_dictionary, ip_dictionary, url_dictionary, ipv6_dictionary, mac_dictionary,
-    email_dictionary, domains_dictionary)
-    print(sys.getsizeof(ip_dictionary))
-    return render_template('submit.html')
-
-
-# @auth.verify_token
-# def verify_token(token):
-#     return token in app.config['TOKENS']
-# @auth.verify_token
-# def verify_token(token):
-#     # token='abc'
-#     if token in app.config['TOKENS']:
-#         session['logged_in']=True
-#         return True
-#     return False
-# def ip():
-#     t1_start = perf_counter()
-#     matches = regex_ipv4('files/waf.log') # calling function with the regex;
-#     print_original(matches)#calling function for printing matches into console
-#     t2_end = perf_counter()#function used for performance testing
-#     print(t1_start)
-#     print(t2_end)
-#     return matches
-# @app.route('/')
-# def index():
-#     return render_template('login.html')
-# @app.route('/protected')
-# @auth.login_required
-# def protected():
-#     return 'This page is protected'
-
-# @app.route('/login', methods=['POST'])
-# def login():
-#     token = request.form['token']
-#     if token in app.config['TOKENS']:
-#         session['token'] = token
-#         return redirect(url_for('upload_form'))
-#     else:
-#         return 'Invalid token'
-# @app.route('/')
-# # def index():
-# #     return render_template("index.html")
-# @auth.login_required
-# def index1():
-#     return "Hello, {}!".format(auth.current_user())
-# @app.route('/ipv4')
-# def ipv4():
-#     # matches = ip()
-#     # anonymized = []
-#     #
-#     # for addr in matches:
-#     #         ipaddr = str(ipaddress.ip_address(addr))
-#     #         anonymized.append(str(anonymize_ip(ipaddr)))
-#     return regex_ipv4('files/waf.log')
-#
-#
-# @app.route('/ipv6')
-# def ipv6():
-#     return regex_ipv6('files/linux.log')
-# @app.route('/mail')
-# def mail():
-#     matches=email()
-#     anonymized=[]
-#     for address in matches:
-#         emailadd=address
-#         anonymized.append(anonymize_email(emailadd))
-#     return anonymized
-#
-# def email():
-#     t1_start = perf_counter()
-#     matches = regex_email("singlelog.log")
-#     print_original(matches)
-#     t2_end = perf_counter()
-#     print(t1_start)
-#     print(t2_end)
-#     return matches
-# @app.route('/mac_addr')
-# def mac_addr():
-#     matches=mac_address()
-#     anonymized=[]
-#     for address in matches:
-#         macadd=address
-#         anonymized.append(anonymize_mac(macadd))
-#     return anonymized
-#
-# def mac_address():
-#     t1_start = perf_counter()
-#     matches = regex_mac("files/fortinet.log")
-#     print_original(matches)
-#     t2_end = perf_counter()
-#     print(t1_start)
-#     print(t2_end)
-#     return matches
-#
-#
+    Functions.clear_dicts()
+    print(sys.getsizeof(Functions.ip_dictionary))
+    return ' '
 
 
 if __name__ == '__main__':

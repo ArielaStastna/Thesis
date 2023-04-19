@@ -1,0 +1,102 @@
+from functions import*
+
+configuration = metakeys_config.Elasticsearch
+# configuration = metakeys_config.RSANetWitness
+# configuration = metakeys_config.QRadar
+
+def process_nested_keys(data, keys, anonymization_function, elasticsearch):
+    # If there is only one key remaining in the keys list
+    if len(keys) == 1:
+        # Check if the key exists in the data dictionary
+        if keys[0] in data:
+            # If the key is in the list of IP_KEYS in the elasticsearch object
+            if keys[0] in elasticsearch.IP_KEYS:
+                # If the value associated with the key is a list, apply the handle_ip_addresses function to each item in the list
+                if isinstance(data[keys[0]], list):
+                    data[keys[0]] = [handle_ip_addresses(item, elasticsearch) for item in data[keys[0]]]
+                # If the value is not a list, apply the handle_ip_addresses function to the value
+                else:
+                    data[keys[0]] = handle_ip_addresses(data[keys[0]], elasticsearch)
+            # If the key is not in the list of IP_KEYS
+            else:
+                # If the value associated with the key is a list, apply the anonymization_function to each item in the list
+                if isinstance(data[keys[0]], list):
+                    data[keys[0]] = [anonymization_function(item) for item in data[keys[0]]]
+                # If the value is not a list, apply the anonymization_function to the value
+                else:
+                    data[keys[0]] = anonymization_function(data[keys[0]])
+    # If there are still multiple keys remaining in the keys list
+    else:
+        key = keys[0]
+        # Check if the key exists in the data dictionary
+        if key in data:
+            # Recursively call the process_nested_keys function on the value associated with the key
+            # with the remaining keys in the keys list, anonymization_function, and elasticsearch as arguments
+            process_nested_keys(data[key], keys[1:], anonymization_function, elasticsearch)
+
+def handle_ip_addresses(ip, configuration):
+
+    ip_anonymization_mapping = {
+        # Create a dictionary that maps IP versions to their corresponding anonymization functions
+        configuration.ip_function_mapping[0] : Functions.anonymize_ip,
+        configuration.ip_function_mapping[1] : Functions.anonymize_ipv6,
+        configuration.ip_function_mapping[2] : Functions.anonymize_link_local_ipv6
+    }
+
+    try:
+        # Try to create an ipaddress.ip_address object from the given IP
+        ip_obj = ipaddress.ip_address(ip)
+        # If the IP is IPv4
+        if ip_obj.version == 4:
+            # Return the result of applying the IPv4 anonymization function from the elasticsearch object on the IP
+            return ip_anonymization_mapping["ipv4"](ip)
+        # If the IP is IPv6
+        elif ip_obj.version == 6:
+            # If the IPv6 IP is a link-local address
+            if ip_obj.is_link_local:
+                # Return the result of applying the link-local IPv6 anonymization function from the elasticsearch object on the IP
+                return ip_anonymization_mapping["ipv6_local"](ip)
+            # If the IPv6 IP is not a link-local address
+            else:
+                # Return the result of applying the regular IPv6 anonymization function from the elasticsearch object on the IP
+                return ip_anonymization_mapping["ipv6"](ip)
+        # If the given IP is not a valid IP address
+    except ValueError:
+        # Ignore the error and continue
+        pass
+        # Return the original IP if it was not successfully anonymized
+    return ip
+
+def anonymize_keys(data, key_anonymization_mapping, elasticsearch):
+    if isinstance(data, dict):
+        # Iterate over each key and its corresponding anonymization function in the key_anonymization_mapping
+        for key, anonymization_function in key_anonymization_mapping.items():
+            # Split the key by '.' to handle nested keys
+            keys = key.split('.')
+            # Call the process_nested_keys function to process the nested keys and apply the anonymization function
+            process_nested_keys(data, keys, anonymization_function, elasticsearch)
+        # Recursively call the anonymize_keys function on each value in the dictionary that is a dictionary or list
+        for value in data.values():
+            if isinstance(value, (dict, list)):
+                anonymize_keys(value, key_anonymization_mapping, elasticsearch)
+    elif isinstance(data, list):
+        # Recursively call the anonymize_keys function on each item in the list
+        for item in data:
+            anonymize_keys(item, key_anonymization_mapping, elasticsearch)
+        # Return the modified data after applying anonymization
+    return data
+
+
+def anonymize_data(data, configuration):
+    key_anonymization_mapping = {  # Create a dictionary that maps keys to anonymization functions
+        **{key: Functions.anonymize_email for key in configuration.EMAIL_KEYS},
+        **{key: Functions.anonymize_mac for key in configuration.MAC_KEYS},
+        **{key: Functions.anonymize_domain for key in configuration.DOMAIN_KEYS},
+        **{key: Functions.anonymize_ip for key in configuration.IP_KEYS},
+        **{key: Functions.anonymize_username for key in configuration.USERNAME_KEYS},
+        **{key: Functions.anonymize_url for key in configuration.URL_KEYS},
+        **{key: Functions.anonymize_windows_path for key in configuration.DIRECTORY_KEYS},
+        **{key: Functions.anonymize_name for key in configuration.FULLNAME_KEYS}
+    }
+
+    return anonymize_keys(data, key_anonymization_mapping, configuration)
