@@ -87,10 +87,13 @@ class Process:
                 Process._anonymize_keys(item, key_anonymization_mapping, elasticsearch)
         if "raw_log" in data:
             data["raw_log"] = Replace.anonymize_usernames_in_raw_log(data["raw_log"])
+            data["raw_log"] = Replace.anonymize_domains_in_raw_log(data["raw_log"])
         if "event" in data and "original" in data["event"]:
             data["event"]["original"] = Replace.anonymize_usernames_in_raw_log(data["event"]["original"])
+            data["event"]["original"] = Replace.anonymize_domains_in_raw_log(data["event"]["original"])
         if "message" in data:
             data["message"] = Replace.anonymize_usernames_in_raw_log(data["message"])
+            data["message"] = Replace.anonymize_domains_in_raw_log(data["message"])
 
         # Return the modified data after applying anonymization
         return data
