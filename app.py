@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 
 import config
@@ -32,41 +32,53 @@ def home():
 @app.route('/anonymize/singlecategory', methods=['POST'])
 def anonymize():
     file = request.files['file']  # Get the uploaded file from the form
-    if file.filename.endswith(('.json', '.log')):  # Check if file has .json or .log extension
+    checkbox_state = request.form.get('checkbox')
+    if file.filename.endswith(('.log')):  # Check if file has .json or .log extension
         content = file.read().decode('utf-8')
         anon_content = ''
         for line in content.splitlines():
             if config.EMAIL:  # Check if EMAIL configuration variable is True
-                anon_line = anonymize_email_line(line)
-            elif config.IPV4:  # Check if IP configuration variable is True
-                anon_line = anonymize_ipv4_line(line)
-            elif config.IPV6:
-                anon_line = anonymize_ipv6_line(line)
-            elif config.LINKLOCAL:
-                anon_line = Functions.anonymize_link_local_ipv6(line)
-            elif config.DOMAIN:
-                anon_line = anonymize_domain_line(line)
-            elif config.MAC:
-                anon_line = anonymize_mac_line(line)
-            elif config.URL:
-                anon_line = anonymize_url_line(line)
-            elif config.WINDOWS_DIR:
-                anon_line = anonymize_windows_line(line)
+                line = Regex.anonymize_email_line(line)
+            if config.IPV4:  # Check if IP configuration variable is True
+                line = Regex.anonymize_ipv4_line(line)
+            if config.IPV6:
+                line = Regex.anonymize_ipv6_line(line)
+            if config.LINKLOCAL:
+                line = Regex.anonymize_linklocal_line(line)
+            if config.DOMAIN:
+                line = Regex.anonymize_domain_line(line)
+            if config.MAC:
+                line = Regex.anonymize_mac_line(line)
+            if config.URL:
+                line = Regex.anonymize_url_line(line)
+            if config.WINDOWS_DIR:
+                line = Regex.anonymize_windows_line(line)
 
             else:
-                anon_line = line
-            anon_content += anon_line + '\n'
+                line = line
+            anon_content += line + '\n'
 
         # Save anonymized content to a file in "uploads" directory
-        output_filename = 'anonymized_output.log' if file.filename.endswith('.log') else 'anonymized_output.json'
+        output_filename = 'anonymized_output.log'
         output_path = os.path.join('uploads', output_filename)
-        checkbox_state = request.form.get('checkbox')
-        if checkbox_state == 'checked':
-            empty_dictionaries()
         with open(output_path, 'w') as output_file:
             output_file.write(anon_content)
-
+        if checkbox_state == 'checked':
+            empty_dictionaries()
         return f'<pre>{anon_content}</pre>'
+    elif file.filename.endswith(('.json')):
+        if request.method == 'POST':
+            file = request.files['file']
+            if file.filename != '':
+                file.save(secure_filename(file.filename))
+                with open(file.filename) as f:
+                    data = json.load(f)
+
+                anonymized_data = Process.anonymize_data_single_category(data, configuration)
+                if checkbox_state == 'checked':
+                    empty_dictionaries()
+                return anonymized_data
+        return "No file selected."
     else:
         return 'Invalid file format. Please upload a .json or .log file.'
 
@@ -86,13 +98,22 @@ def json_file():
             with open(file.filename) as f:
                 data = json.load(f)
             checkbox_state = request.form.get('checkbox')
+
+            anonymized_data = Process.anonymize_data(data, configuration)
             if checkbox_state == 'checked':
                 empty_dictionaries()
-
-            anonymized_data = anonymize_data(data, configuration)
-            # return render_template('result.html', json_data=json.dumps(anonymized_data, indent=2))
             return anonymized_data
     return "No file selected."
+
+# @app.route('/anonymize/json', methods=['POST'])
+# def json_file():
+#     if request.method == 'POST':
+#         data = request.json
+#         anonymized_data = anonymize_data(data, configuration)
+#         return anonymized_data
+#
+#     return "No data received."
+
 
 @app.route('/', methods=['POST'])
 def upload_file():
@@ -110,7 +131,7 @@ def upload_file():
         return 'Error: Unsupported file type.'
 
     # Perform anonymization and get the output
-    function = complete_anonymization(file)
+    function = Regex.complete_anonymization(file)
 
     # Set the output file name and path
     output_filename = os.path.splitext(file.filename)[0] + '_anonymized' + output_extension

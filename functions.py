@@ -25,7 +25,8 @@ class Functions:
     # Function to generate a random private IP address
     @staticmethod 
     def _generate_random_private_ip(private_range):
-        # convert IP range strings to integers
+        # split into parts, convert first and last IP from range to binary to ensure 8b length
+        # conversion for easier comparison
         start = int(''.join(['{:08b}'.format(int(x)) for x in private_range['start'].split('.')]), 2)
         end = int(''.join(['{:08b}'.format(int(x)) for x in private_range['end'].split('.')]), 2)
     
@@ -55,7 +56,7 @@ class Functions:
             {"start": "172.32.0.0", "end": "192.167.255.255"},
             {"start": "192.169.0.0", "end": "223.255.255.255"}
         ]
-    
+        # find out whether it is a private address by iterating through private range
         is_private = False
         for private_range in private_ranges:
             if (socket.inet_aton(ip_address) >= socket.inet_aton(private_range['start'])) and (
@@ -94,8 +95,9 @@ class Functions:
         # Split the IPv6 address into its 8 16-bit blocks
         blocks = ipv6_address.split(':')
     
-        # Replace one random block with a new random value
+        # Replace one random block with a new random value, choose the block randomly by 0-7
         random_index = random.randint(0, 7)
+        # maximum value that can be represented by hexadecimal
         blocks[random_index] = '{:04x}'.format(random.randint(0, 2 ** 16 - 1))
     
         # Join the blocks back together into an IPv6 address
@@ -139,10 +141,7 @@ class Functions:
         anonymized_ipv6_address = "fe80::" + anonymized_interface_id
     
         return anonymized_ipv6_address
-    
-    
-    
-    
+
     # Function to anonymize a MAC address
     @staticmethod 
     def anonymize_mac(mac):
@@ -162,7 +161,7 @@ class Functions:
         # Generate a random word to use in domain name
         word = Functions.fake.word()
         
-        # Generate a random base domain name
+        # Generate a random base domain name and determine the form of address by random choice
         base_domain = Functions.fake.domain_name()
     
         c = random.randint(0, 2)
@@ -190,13 +189,11 @@ class Functions:
     
     @staticmethod 
     def anonymize_url(url):
-        global url_dictionary
-    
         # Check if the URL is already anonymized
-        if url in url_dictionary:
-            return url_dictionary[url]
+        if url in Functions.url_dictionary:
+            return Functions.url_dictionary[url]
     
-        # Parse the URL into its components
+        # Parse the URL into its components scheme, domain, path
         parts = urlparse(url)
     
         # Generate a random domain using the faker library
@@ -212,7 +209,7 @@ class Functions:
             new_url += f"#{parts.fragment}"
     
         # Add the anonymized URL to the dictionary
-        url_dictionary[url] = new_url
+        Functions.url_dictionary[url] = new_url
     
         return new_url
     
@@ -265,35 +262,7 @@ class Functions:
     
         # Return the newly generated path
         return new_path
-    
-    # Functions.linux_path_dictionary = {}
-    # fake = Faker()
-    #
-    # @staticmethod def anonymize_linux_path(path):
-    #     if not os.path.isabs(path):
-    #         return path  # Return the original path if it's not absolute
-    #
-    #     # Check if the path has been previously anonymized
-    #     if path in Functions.linux_path_dictionary:
-    #         return Functions.linux_path_dictionary[path]  # Return the previously anonymized path
-    #
-    #     # Get the file extension (if it exists)
-    #     filename, ext = os.path.splitext(path)
-    #
-    #     # Generate a new random path in the Linux format
-    #     new_path = os.path.join('/', *Functions.fake.words(nb=3, ext_word_list=None))
-    #
-    #     # Add the original file extension (if it exists)
-    #     if ext:
-    #         new_path += ext
-    #
-    #     # Add the newly generated path to the dictionary
-    #     Functions.linux_path_dictionary[path] = new_path
-    #
-    #     # Return the newly generated path
-    #     return new_path
-    #
-    
+
     @staticmethod 
     def anonymize_windows_path(path):
         if not os.path.isabs(path):
